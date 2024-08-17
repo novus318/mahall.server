@@ -11,8 +11,11 @@ const houseSchema = new mongoose.Schema({
     collectionAmount: {
       type: Number,
       default: 0 // You can set a default value if needed
+    },
+    Lastcollection: {
+      type: Date,
     }
 },{ timestamps: true });
 
 export default mongoose.model('house', houseSchema);
-  // Reference to the family head (also a member)
+  // Reference to the family head (also a member)tatus === 200

@@ -56,6 +56,17 @@ router.get('/get', async(req, res) => {
    }
 });
 
+router.get('/get-all', async(req, res) => {
+    try {
+        const houses = await houseModel.find({}).sort({
+          createdAt: -1,
+        }).populate('familyHead');
+        res.status(200).send({ success: true, houses });
+    } catch (error) {
+        res.status(500).send({ success: false, message: 'Server Error' });
+    }
+ });
+
 
 
 

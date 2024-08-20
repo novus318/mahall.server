@@ -9,7 +9,6 @@ const router=express.Router()
 router.post('/create', async (req, res) => {
     try {
       const { newMember,selectedRelation,houseId } = req.body;
-  console.log(selectedRelation)
       // Create a new member instance
       const member = new memberModel({
         name:newMember.name,
@@ -19,6 +18,7 @@ router.post('/create', async (req, res) => {
         education:newMember.education,
         gender:newMember.gender,
         mobile:newMember.mobile,
+        place:newMember.place,
         house:houseId,
       });
       if (selectedRelation && mongoose.Types.ObjectId.isValid(selectedRelation.memberId)) {
@@ -41,6 +41,8 @@ router.post('/create', async (req, res) => {
       res.status(500).json({ message: 'An error occurred while creating the member.', error: error.message });
     }
   });
+
+  
   router.put('/edit-member', async (req, res) => {
     try {
       const { newMember,selectedRelation,houseId,memberId } = req.body;

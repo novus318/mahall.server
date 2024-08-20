@@ -3,19 +3,27 @@ import mongoose from "mongoose";
 const houseSchema = new mongoose.Schema({
    name: String,
    address: String,
-   number:String,
+   number: {
+      type: String,
+      unique: true // This ensures the number is unique
+   },
    familyHead: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'member'
-    },
-    collectionAmount: {
+   },
+   collectionAmount: {
       type: Number,
       default: 0 // You can set a default value if needed
-    },
-    Lastcollection: {
+   },
+   lastCollection: {
       type: Date,
-    }
-},{ timestamps: true });
+   },
+   status: {
+      type: String,
+      enum: ['rented', 'owned'], 
+      required: true 
+   },
+   rationsStatus:String,
+}, { timestamps: true });
 
 export default mongoose.model('house', houseSchema);
-  // Reference to the family head (also a member)tatus === 200

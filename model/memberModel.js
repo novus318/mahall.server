@@ -20,7 +20,6 @@ const memberSchema = new mongoose.Schema({
   },
   education: {
     type: String,
-    required: true
   },
   gender: {
     type: String,
@@ -43,6 +42,11 @@ const memberSchema = new mongoose.Schema({
     ref: 'house',
     required: true
   },
+  place: {
+    type: String,
+    enum: ['UAE', 'Malaysia', 'Kuwait', 'Singapore', 'house','local'], // Possible places
+    required: true // Ensures that the place field is always set
+  }
 }, { timestamps: true });
 
 // Export the model

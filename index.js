@@ -7,7 +7,8 @@ import connectDB from "./config/db.js"
 import authRoutes from './routes/authRoutes.js'
 import houseRoutes from './routes/houseRoute.js'
 import memberRoutes from './routes/memberRoutes.js'
-
+import bankRoutes from './routes/bankRoutes.js'
+import staffRoutes from './routes/staffRoutes.js'
 
 
 
@@ -36,8 +37,8 @@ app.get('/',(req,res)=>{
 app.use('/api/auth',authRoutes)
 app.use('/api/house',houseRoutes)
 app.use('/api/member',memberRoutes)
-
-
+app.use('/api/account',bankRoutes)
+app.use('/api/staff',staffRoutes)
 
 
 

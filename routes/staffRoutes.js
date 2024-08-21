@@ -1,5 +1,6 @@
 import express  from "express";
 import staffModel from "../model/staffModel.js";
+import salaryModel from "../model/salaryModel.js"
 const router=express.Router()
 
 
@@ -148,9 +149,11 @@ router.get('/get/:id', async (req, res) => {
             return res.status(404).json({
                 success:false,
                 message: 'Staff member not found' });
-        }
+            }
 
-        res.status(200).json({ message: 'Staff member retrieved successfully', staff });
+            const payslips = await salaryModel.find({ staffId: id });
+
+        res.status(200).json({ success:true, message: 'Staff member retrieved successfully', staff,payslips });
     } catch (error) {
         res.status(500).json({ 
             error,

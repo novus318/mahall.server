@@ -9,7 +9,7 @@ import houseRoutes from './routes/houseRoute.js'
 import memberRoutes from './routes/memberRoutes.js'
 import bankRoutes from './routes/bankRoutes.js'
 import staffRoutes from './routes/staffRoutes.js'
-
+import buildingRoutes from './routes/buildingRoutes.js'
 
 
 const app = express();
@@ -39,6 +39,7 @@ app.use('/api/house',houseRoutes)
 app.use('/api/member',memberRoutes)
 app.use('/api/account',bankRoutes)
 app.use('/api/staff',staffRoutes)
+app.use('/api/rent',buildingRoutes)
 
 
 

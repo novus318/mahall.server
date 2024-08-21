@@ -6,8 +6,9 @@ const deductionSchema = new mongoose.Schema({
 });
 
 const salarySchema = new mongoose.Schema({
-  employeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'staff', required: true },
+staffId: { type: mongoose.Schema.Types.ObjectId, ref: 'staff', required: true },
   basicPay: { type: Number, required: true }, 
+  advancePay: { type: Number, default: 0 },
   deductions: [deductionSchema], 
   netPay: { type: Number, required: true }, 
   salaryPeriod: {

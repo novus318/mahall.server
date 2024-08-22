@@ -27,30 +27,36 @@ router.post('/create-building', async (req, res) => {
   });
 
 
-  router.post('/add-contract/:buildingID/:roomNumber', async (req, res) => {
+  router.post('/add-contract/:buildingID/:roomId', async (req, res) => {
     try {
-        const { buildingID, roomNumber } = req.params;
-        const { from, to, tenant, rent, deposit, advancePayment } = req.body;
+        const { buildingID, roomId } = req.params;
+        const { from, to, tenant, rent, deposit } = req.body;
 
-        const building = await buildingModel.findOne({ buildingID });
+        const building = await buildingModel.findById(buildingID);
 
         if (!building) {
             return res.status(404).json({ message: 'Building not found' });
         }
 
-        const room = building.rooms.find(room => room.roomNumber === roomNumber);
+        const room = building.rooms.id(roomId);
 
         if (!room) {
             return res.status(404).json({ message: 'Room not found' });
         }
 
+        if (room.contractHistory && room.contractHistory.length > 0) {
+          const lastContract = room.contractHistory[room.contractHistory.length - 1];
+          lastContract.status = 'inactive';
+        }
+    
+        // Create the new contract
         const newContract = {
-            from,
-            to,
-            tenant,
-            rent,
-            deposit,
-            advancePayment,
+          from,
+          to,
+          tenant,
+          rent,
+          deposit,
+          status: 'active' // Mark the new contract as active
         };
 
         room.contractHistory.push(newContract);
@@ -58,7 +64,7 @@ router.post('/create-building', async (req, res) => {
 
         res.status(200).json({
             success:true,
-            message: 'Contract added successfully', building });
+            message: 'Contract added successfully' });
     } catch (error) {
         res.status(500).json({
             success:false, message: 'Error adding contract', error: error.message });
@@ -66,6 +72,7 @@ router.post('/create-building', async (req, res) => {
 });
 
 router.get('/get-buildings', async (req,res)=>{
+  
     try {
         const buildings = await buildingModel.find().sort({
           createdAt: -1,
@@ -75,6 +82,35 @@ router.get('/get-buildings', async (req,res)=>{
         res.status(500).json({ success: false, message: 'Server Error' });
     }
 })
+
+router.get('/get-ByRoom/:buildingID/:roomId', async (req, res) => {
+  const { buildingID, roomId } = req.params;
+  
+  try {
+    // Find the building by its ID
+    const building = await buildingModel.findById(buildingID);
+    
+    if (!building) {
+      return res.status(404).json({ message: 'Building not found' });
+    }
+    
+    // Find the room within the building's rooms array
+    const room = building.rooms.id(roomId);
+    
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found' });
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: 'Room fetched successfully',
+      room
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+});
 
 
 export default router

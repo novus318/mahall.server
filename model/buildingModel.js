@@ -24,6 +24,7 @@ const tenantSchema = new mongoose.Schema({
     tenant: { type: tenantSchema, required: true },
     rent: { type: Number, required: true },
     deposit: { type: Number, required: true },
+    status: { type: String, enum: ['active', 'inactive'], default: 'active' },
     rentCollection: [rentCollectionSchema],
   }, { timestamps: true });
   

@@ -10,7 +10,7 @@ import memberRoutes from './routes/memberRoutes.js'
 import bankRoutes from './routes/bankRoutes.js'
 import staffRoutes from './routes/staffRoutes.js'
 import buildingRoutes from './routes/buildingRoutes.js'
-
+import transactionRoutes from './routes/transactionRoutes.js'
 
 const app = express();
 const PORT = 8000;
@@ -40,7 +40,7 @@ app.use('/api/member',memberRoutes)
 app.use('/api/account',bankRoutes)
 app.use('/api/staff',staffRoutes)
 app.use('/api/rent',buildingRoutes)
-
+app.use('/api/transactions',transactionRoutes)
 
 
 app.listen(PORT, () => {

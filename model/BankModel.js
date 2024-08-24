@@ -26,7 +26,11 @@ const bankSchema = new mongoose.Schema({
       type: String,
       enum: ['bank', 'cash'], // Possible values: 'bank' or 'cash'
       required: true // Account type is required
-    }
+    },
+    primary: {
+      type: Boolean,
+      default: false, // Default is not primary
+    },
 }, { timestamps: true }); // Timestamps for createdAt and updatedAt
 
 // Export the model

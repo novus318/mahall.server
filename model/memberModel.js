@@ -44,7 +44,7 @@ const memberSchema = new mongoose.Schema({
   },
   place: {
     type: String,
-    enum: ['UAE', 'Malaysia', 'Kuwait', 'Singapore', 'house','local'], // Possible places
+    enum: ['UAE', 'Malaysia', 'Kuwait', 'Singapore', 'Kerala','Outside kerala'], // Possible places
     required: true // Ensures that the place field is always set
   }
 }, { timestamps: true });

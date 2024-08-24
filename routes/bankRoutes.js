@@ -1,5 +1,7 @@
 import express  from "express";
 import BankModel from "../model/BankModel.js";
+import transactionModel from "../model/transactionModel.js";
+import mongoose from "mongoose";
 const router=express.Router()
 
 
@@ -93,6 +95,42 @@ router.get('/get', async (req, res) => {
             error: error.message,
         });
     }
+})
+
+router.post('/inter-account-transfer', async (req, res) => {
+    const { fromAccount, toAccount, amount } = req.body;
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const debitTransaction = new transactionModel({
+            type: 'Debit',
+            amount,
+            accountId: fromAccount._id,
+            description: `Account tranfer to ${toAccount.name}`,
+            category: 'Self-Transfer',
+          });
+          await debitTransaction.save({ session });
+          await BankModel.findByIdAndUpdate(fromAccount._id, { $inc: { balance: -amount } }, { session });
+
+          const creditTransaction = new transactionModel({
+            type: 'Credit',
+            amount,
+            accountId: toAccount._id,
+            description:`Amount transfer from ${fromAccount.name} to ${toAccount.name}`,
+            category: 'Self-Transfer',
+          });
+          await creditTransaction.save({ session });
+
+          await BankModel.findByIdAndUpdate(toAccount._id, { $inc: { balance: +amount } }, { session });
+
+          await session.commitTransaction();
+          session.endSession();
+          res.status(200).send({ success: true, message: 'Transfer successful' });
+}catch{
+    await session.abortTransaction();
+    session.endSession();
+    res.status(500).send({ success: false, message: 'Transfer failed' });
+}
 })
 
 

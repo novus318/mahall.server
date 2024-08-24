@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const transactionSchema = new mongoose.Schema({
-    type: { type: String, enum: ['Credit', 'Debit'], required: true }, // Credit or Debit
+    type: { type: String, enum: ['Credit', 'Debit'], required: true },
     amount: { type: Number, required: true },
     date: { type: Date, default: Date.now }, 
     description: String,

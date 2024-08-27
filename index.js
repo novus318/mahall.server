@@ -14,6 +14,8 @@ import buildingRoutes from './routes/buildingRoutes.js'
 import transactionRoutes from './routes/transactionRoutes.js'
 import { generateMonthlyCollections } from "./functions/generateMonthlyCollections.js"
 import { generateMonthlySalaries } from "./functions/generateSalary.js"
+import { collectRent } from "./functions/generateRent.js"
+import dashboardRoutes from './routes/dashboardRoutes.js'
 const app = express();
 const PORT = 8000;
 app.use(cors({
@@ -32,6 +34,7 @@ app.use(morgan('dev'))
 connectDB();
 //generateMonthlyCollections()
 // generateMonthlySalaries()
+// collectRent()
 cron.schedule('0 10 1 * *', async () => {
   await generateMonthlyCollections();
 });
@@ -42,6 +45,7 @@ app.get('/',(req,res)=>{
 })
 
 app.use('/api/auth',authRoutes)
+app.use('/api/dashboard',dashboardRoutes)
 app.use('/api/house',houseRoutes)
 app.use('/api/member',memberRoutes)
 app.use('/api/account',bankRoutes)

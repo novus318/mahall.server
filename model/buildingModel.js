@@ -4,8 +4,16 @@ import mongoose from "mongoose";
 const rentCollectionSchema = new mongoose.Schema({
     period: { type: String, required: true },
     amount: { type: Number, required: true },
-    advancePayment: { type: Number, required: false },
-    paymentDate: { type: Date, required: true },
+    date: {
+      type: Date,
+      default: Date.now
+  },
+  accountId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'bank', // Reference to the bank account where the kudiCollection is recorded
+    required: true
+},
+    paymentDate: { type: Date},
     status: { type: String, enum: ['Pending', 'Paid'], default: 'Pending' },
   }, { timestamps: true });
 
@@ -26,6 +34,7 @@ const tenantSchema = new mongoose.Schema({
     deposit: { type: Number, required: true },
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },
     rentCollection: [rentCollectionSchema],
+    advancePayment: { type: Number},
   }, { timestamps: true });
   
   const roomSchema = new mongoose.Schema({

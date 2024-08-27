@@ -195,22 +195,19 @@ router.get('/pending-salaries', async (req, res) => {
 
 router.put('/update/salary/:id', async (req, res) => {
     const payslipId = req.params.id;
-    const { deductions, netPay, paymentDate, status,accountId } = req.body; // Extract the fields from the request body
+    const { deductions, netPay, paymentDate,accountId } = req.body; // Extract the fields from the request body
 
     try {
-        // Prepare the update object
-        const updateData = {};
-
-        if (deductions) updateData.deductions = deductions; // Set new deductions if provided
-        if (netPay) updateData.netPay = netPay; // Set new net pay if provided
-        if (paymentDate) updateData.paymentDate = paymentDate; // Set payment date if provided
-        if (status) updateData.status = status; // Set status if provided
-        if (accountId) updateData.accountId = accountId;
-
         // Find the payslip by ID and update it
         const updatePayslip = await salaryModel.findByIdAndUpdate(
             payslipId,
-            { $set: updateData },
+            { 
+                deductions,
+                netPay,
+                paymentDate,
+                status: 'Paid',
+                accountId,
+             },
             { new: true }
         ).populate('staffId');
 
@@ -220,7 +217,6 @@ router.put('/update/salary/:id', async (req, res) => {
                 message: 'Payroll not found' 
             });
         }
-        if (status === 'Paid' && accountId) {
             const category = 'Salary'
             const description = `Salary payment for  ${updatePayslip.salaryPeriod.startDate.toDateString()} to ${updatePayslip.salaryPeriod.endDate.toDateString()} for ${updatePayslip.staffId.name}`
             const transaction= await debitAccount(accountId,netPay,description,category)
@@ -232,15 +228,14 @@ router.put('/update/salary/:id', async (req, res) => {
                 )
                 return res.status(500).json({ message: 'Error processing transaction please check your account balance' });
             }else{
-                await sendWhatsAppSalary(updatePayslip);  
+                res.status(200).json({ 
+                    success: true,
+                    message: 'Payroll updated successfully', 
+                    updatePayslip 
+                });
             }
-        }
-        res.status(200).json({ 
-            success: true,
-            message: 'Payroll updated successfully', 
-            updatePayslip 
-        });
     } catch (error) {
+        console.log(error)
         res.status(500).json({ 
             error,
             success: false,

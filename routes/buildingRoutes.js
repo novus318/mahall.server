@@ -8,6 +8,11 @@ router.post('/create-building', async (req, res) => {
     try {
       const { buildingName, place, buildingID, rooms } = req.body;
   
+      // Check if building ID already exists
+      const existingBuilding = await buildingModel.findOne({ buildingID: buildingID });
+      if (existingBuilding) {
+        return res.status(400).send({ success: false, message: 'Building ID already exists' });
+      }
       // Create a new building document
       const newBuilding = new buildingModel({
         buildingName,
@@ -111,6 +116,48 @@ router.get('/get-ByRoom/:buildingID/:roomId', async (req, res) => {
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 });
+
+
+router.get('/rent-collections/pending', async (req,res)=>{
+  
+  try {
+    const buildings = await buildingModel.find({
+      'rooms.contractHistory.rentCollection.status': 'Pending'
+    }).lean();
+    const pendingCollections = [];
+
+    buildings.forEach((building) => {
+      building.rooms.forEach((room) => {
+        room.contractHistory.forEach((contract) => {
+          contract.rentCollection.forEach((collection) => {
+            if (collection.status === 'Pending') {
+              pendingCollections.push({
+                buildingID: building.buildingID,
+                roomId: room._id,
+                contractId: contract._id,
+                buildingName: building.buildingName,
+                roomNumber: room.roomNumber,
+                tenantName: contract.tenant.name,
+                tenantNumber: contract.tenant.number,
+                rent: contract.rent,
+                deposit: contract.deposit,
+                period: collection.period,
+                amount: collection.amount,
+                dueDate: collection.date,
+                status: collection.status,
+              });
+            }
+          });
+        });
+      });
+    });
+
+      res.status(200).json({ success: true, pendingCollections });
+  } catch (error) {
+    console.log(error)
+      res.status(500).json({ success: false, message: 'Server Error',error });
+  }
+})
 
 
 export default router

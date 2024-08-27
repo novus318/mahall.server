@@ -1,6 +1,8 @@
 import express  from "express";
 import staffModel from "../model/staffModel.js";
 import salaryModel from "../model/salaryModel.js"
+import { debitAccount } from "../functions/transaction.js";
+import { sendWhatsAppSalary } from "../functions/generateSalary.js";
 const router=express.Router()
 
 
@@ -177,6 +179,76 @@ router.get('/all-staff', async (req, res) => {
             message: 'Error retrieving staff members' });
     }
 });
+
+router.get('/pending-salaries', async (req, res) => {
+    try {
+        // Fetch all pending payslips
+        const payslips = await salaryModel.find({ status: 'Pending' }).sort({
+            createdAt: -1,
+        }).populate('staffId');
+
+        res.status(200).json({ success: true, payslips });
+    } catch (error) {
+     
+    }
+});
+
+router.put('/update/salary/:id', async (req, res) => {
+    const payslipId = req.params.id;
+    const { deductions, netPay, paymentDate, status,accountId } = req.body; // Extract the fields from the request body
+
+    try {
+        // Prepare the update object
+        const updateData = {};
+
+        if (deductions) updateData.deductions = deductions; // Set new deductions if provided
+        if (netPay) updateData.netPay = netPay; // Set new net pay if provided
+        if (paymentDate) updateData.paymentDate = paymentDate; // Set payment date if provided
+        if (status) updateData.status = status; // Set status if provided
+        if (accountId) updateData.accountId = accountId;
+
+        // Find the payslip by ID and update it
+        const updatePayslip = await salaryModel.findByIdAndUpdate(
+            payslipId,
+            { $set: updateData },
+            { new: true }
+        ).populate('staffId');
+
+        if (!updatePayslip) {
+            return res.status(404).json({ 
+                success: false,
+                message: 'Payroll not found' 
+            });
+        }
+        if (status === 'Paid' && accountId) {
+            const category = 'Salary'
+            const description = `Salary payment for  ${updatePayslip.salaryPeriod.startDate.toDateString()} to ${updatePayslip.salaryPeriod.endDate.toDateString()} for ${updatePayslip.staffId.name}`
+            const transaction= await debitAccount(accountId,netPay,description,category)
+            if(!transaction){
+                await salaryModel.findByIdAndUpdate(
+                    payslipId,
+                    { status: 'Pending' },
+                    { new: true }
+                )
+                return res.status(500).json({ message: 'Error processing transaction please check your account balance' });
+            }else{
+                await sendWhatsAppSalary(updatePayslip);  
+            }
+        }
+        res.status(200).json({ 
+            success: true,
+            message: 'Payroll updated successfully', 
+            updatePayslip 
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            error,
+            success: false,
+            message: 'Error updating payroll' 
+        });
+    }
+});
+
 
 
 export default router

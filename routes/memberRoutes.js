@@ -42,6 +42,33 @@ router.post('/create', async (req, res) => {
     }
   });
 
+  router.delete('/delete/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+  
+      // Check if the provided ID is a valid MongoDB ObjectId
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ message: 'Invalid member ID.' });
+      }
+  
+      // Find the member by ID and delete it
+      const deletedMember = await memberModel.findByIdAndDelete(id);
+  
+      // Check if the member was found and deleted
+      if (!deletedMember) {
+        return res.status(404).json({ message: 'Member not found.' });
+      }
+  
+      // Send a success response with the deleted member information
+      res.status(200).json({
+        success: true,
+        message: 'Member deleted successfully.',
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'An error occurred while deleting the member.', error: error.message });
+    }
+  });
+  
   
   router.put('/edit-member', async (req, res) => {
     try {
@@ -52,6 +79,7 @@ router.post('/create', async (req, res) => {
         name:newMember.name,
         status:newMember.status,
         DOB:newMember.DOB,
+        place:newMember.place,
         maritalStatus:newMember.maritalStatus,
         education:newMember.education,
         gender:newMember.gender,
@@ -62,7 +90,7 @@ router.post('/create', async (req, res) => {
         updatedmember.relation.member = selectedRelation.memberId;
       }
       if (selectedRelation.relation) {
-        updatedmember.relation.relationType = selectedRelation.relation || ''; // Default to empty string if relation is not provided
+        updatedmember.relation.relationType = selectedRelation.relation || ''; 
       }
   
   

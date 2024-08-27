@@ -11,14 +11,23 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@uploadthing/react": "^6.7.2",
+    "axios": "^1.7.5",
     "colors": "^1.4.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "form-data": "^4.0.0",
+    "fs": "^0.0.1-security",
+    "googleapis": "^142.0.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.5.3",
     "morgan": "^1.10.0",
+    "node-cron": "^3.0.3",
     "nodemon": "^3.1.4",
-    "path": "^0.12.7"
+    "path": "^0.12.7",
+    "pdf-lib": "^1.17.1",
+    "puppeteer": "^23.1.1",
+    "uploadthing": "^6.13.2"
   }
 }

@@ -2,6 +2,9 @@ import express  from "express";
 import houseModel from "../model/houseModel.js";
 import mongoose from "mongoose";
 import memberModel from "../model/memberModel.js";
+import kudiCollection from "../model/kudiCollection.js";
+import { sendWhatsAppMessageFunction } from "../functions/generateMonthlyCollections.js";
+import { creditAccount } from "../functions/transaction.js";
 const router=express.Router()
 
 
@@ -107,6 +110,79 @@ router.get('/get-all', async(req, res) => {
         res.status(500).send({ success: false, message: 'Server Error' });
     }
  });
+
+ router.get('/get/pending/collections', async (req, res) => {
+    try {
+
+        const pendingCollections = await kudiCollection.find({ status: 'Unpaid' }).sort({
+            createdAt: -1,
+          }).populate('memberId houseId')
+        res.status(200).send({ success: true, houses: pendingCollections });
+    } catch (error) {
+        res.status(500).send({ success: false, message: `Server Error: ${error}`,
+            error
+         });
+    }
+});
+router.get('/get/paid/collections', async (req, res) => {
+    try {
+
+        const paidCollections = await kudiCollection.find({ status: 'Paid' }).sort({
+            createdAt: -1,
+          }).populate('memberId houseId')
+        res.status(200).send({ success: true, houses: paidCollections });
+    } catch (error) {
+        res.status(500).send({ success: false, message: `Server Error: ${error}`,
+            error
+         });
+    }
+});
+
+router.put('/update/collection/:id', async (req, res) => {
+    try {
+        const { paymentType } = req.body;
+        const collectionId = req.params.id;
+
+        // Find the kudiCollection by ID and update it
+        const updatedCollection = await kudiCollection.findByIdAndUpdate(
+            collectionId,
+            {
+                kudiCollectionType: paymentType, 
+                status: 'Paid', 
+                PaymentDate: new Date(),
+            },
+            { new: true } // Return the updated document
+        ).populate('memberId houseId');
+
+        if (!updatedCollection) {
+            return res.status(404).send({ success: false, message: 'Kudi collection not found' });
+        }
+        const transaction = creditAccount(updatedCollection.accountId,updatedCollection.amount,
+            updatedCollection.description,
+            updatedCollection.category.name
+        )
+        if (!transaction) {
+            await kudiCollection.findByIdAndUpdate(
+                collectionId,
+                {
+                    kudiCollectionType: paymentType, 
+                    status: 'Unpaid', 
+                    PaymentDate: new Date(),
+                },
+                { new: true }
+            )
+            return res.status(400).send({ success: false, message: 'Error crediting account' });
+        }else{
+        await sendWhatsAppMessageFunction(updatedCollection);
+        }
+        res.status(200).send({ success: true, message: 'Kudi collection updated successfully', data: updatedCollection });
+    } catch (error) {
+        console.error('Error updating kudi collection:', error);
+        res.status(500).send({ success: false, message: 'Server Error' });
+    }
+});
+
+
 
 
 

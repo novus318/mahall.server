@@ -31,6 +31,44 @@ router.post('/create-building', async (req, res) => {
     }
   });
 
+  router.post('/add-room', async (req, res) => {
+    try {
+      const { buildingID, roomNumber } = req.body;
+  
+      // Find the building by buildingID
+      const building = await buildingModel.findById(buildingID);
+      
+      if (!building) {
+        return res.status(404).json({ success: false, message: 'Building not found' });
+      }
+  
+      // Check if the room number already exists in the building
+      const existingRoom = building.rooms.find(room => room.roomNumber === roomNumber);
+      if (existingRoom) {
+        return res.status(400).json({ success: false, message: 'Room number already exists in this building' });
+      }
+  
+      // Add the new room to the rooms array
+      building.rooms.push({ roomNumber });
+  
+      // Save the updated building document
+      await building.save();
+  
+      res.status(200).json({
+        success: true,
+        message: 'Room added successfully',
+        building: building
+      });
+    } catch (error) {
+      console.log(error)
+      res.status(500).json({
+        success: false,
+        message: 'Error adding room',
+        error: error.message
+      });
+    }
+  });
+
 
   router.post('/add-contract/:buildingID/:roomId', async (req, res) => {
     try {

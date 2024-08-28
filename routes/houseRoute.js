@@ -182,7 +182,20 @@ router.put('/update/collection/:id', async (req, res) => {
     }
 });
 
-
+router.get('/kudi-collections/:memberId', async (req, res) => {
+    try {
+        const { memberId } = req.params;
+        
+        // Find kudi collections by memberId
+        const collections = await kudiCollection.find({ memberId })
+            .populate('memberId')  
+            .populate('houseId'); 
+        res.status(200).json({success:true ,collections});
+    } catch (error) {
+        console.error('Error fetching kudi collections by memberId:', error);
+        res.status(500).json({ success:false,message: 'Server error. Could not fetch kudi collections.' });
+    }
+});
 
 
 

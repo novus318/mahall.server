@@ -16,6 +16,8 @@ import { generateMonthlyCollections } from "./functions/generateMonthlyCollectio
 import { generateMonthlySalaries } from "./functions/generateSalary.js"
 import { collectRent } from "./functions/generateRent.js"
 import dashboardRoutes from './routes/dashboardRoutes.js'
+import paymentRoutes from './routes/paymentRoutes.js'
+import recieptRoutes from './routes/recieptRoutes.js'
 const app = express();
 const PORT = 8000;
 app.use(cors({
@@ -52,7 +54,8 @@ app.use('/api/account',bankRoutes)
 app.use('/api/staff',staffRoutes)
 app.use('/api/rent',buildingRoutes)
 app.use('/api/transactions',transactionRoutes)
-
+app.use('/api/pay',paymentRoutes)
+app.use('/api/reciept',recieptRoutes)
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

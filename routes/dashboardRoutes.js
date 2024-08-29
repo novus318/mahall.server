@@ -65,6 +65,60 @@ router.get('/get-expenses', async (req, res) => {
     }
 });
 
+router.get('/get-donations', async (req, res) => {
+    try {
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        const endOfMonth = new Date();
+        endOfMonth.setHours(23, 59, 59, 999);
+
+        const totalDonations = await transactionModel.aggregate([
+            {
+                $match: {
+                    category: 'Donation',
+                    createdAt: {
+                        $gte: startOfMonth,
+                        $lte: endOfMonth
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalCredit: {
+                        $sum: {
+                            $cond: [{ $eq: ["$type", "Credit"] }, "$amount", 0]
+                        }
+                    },
+                    totalDebit: {
+                        $sum: {
+                            $cond: [{ $eq: ["$type", "Debit"] }, "$amount", 0]
+                        }
+                    }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    totalDonations: { $subtract: ["$totalCredit", "$totalDebit"] }
+                }
+            }
+        ]);
+
+        const total = totalDonations.length > 0 ? totalDonations[0].totalDonations : 0;
+
+        res.status(200).json({ success: true, totalDonations: total });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error getting total donations'
+        });
+    }
+});
+
+
 
 router.get('/get-transactions', async (req, res) => {
     try {
@@ -79,6 +133,104 @@ router.get('/get-transactions', async (req, res) => {
         });
     }
 })
+
+
+router.get('/get-donation-expense-trends', async (req, res) => {
+    try {
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+        sixMonthsAgo.setDate(1);
+        sixMonthsAgo.setHours(0, 0, 0, 0);
+
+        // Array of the last 6 months for reference
+        const monthsArray = [];
+        for (let i = 0; i < 6; i++) {
+            const date = new Date(sixMonthsAgo);
+            date.setMonth(date.getMonth() + i);
+            monthsArray.push({
+                year: date.getFullYear(),
+                month: date.getMonth() + 1
+            });
+        }
+
+        const trends = await transactionModel.aggregate([
+            {
+                $match: {
+                    createdAt: { $gte: sixMonthsAgo },
+                    category: { $ne: "Self-Transfer" }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        year: { $year: "$createdAt" },
+                        month: { $month: "$createdAt" }
+                    },
+                    donation: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ["$category", "Donation"] },
+                                {
+                                    $cond: [
+                                        { $eq: ["$type", "Debit"] }, 
+                                        { $multiply: ["$amount", -1] }, 
+                                        "$amount"
+                                    ]
+                                },
+                                0
+                            ]
+                        }
+                    },
+                    expense: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ["$type", "Debit"] },
+                                "$amount",
+                                0
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                $sort: { "_id.year": 1, "_id.month": 1 }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    month: {
+                        $concat: [
+                            { $arrayElemAt: [["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"], "$_id.month"] },
+                            " ",
+                            { $toString: "$_id.year" }
+                        ]
+                    },
+                    year: "$_id.year",
+                    monthNumber: "$_id.month",
+                    donation: 1,
+                    expense: 1
+                }
+            }
+        ]);
+
+        // Map trends to the last 6 months, filling in missing months with zeros
+        const trendsMap = monthsArray.map(({ year, month }) => {
+            const trend = trends.find(t => t.year === year && t.monthNumber === month) || {};
+            return {
+                month: `${["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][month]}`,
+                donation: trend.donation || 0,
+                expense: trend.expense || 0
+            };
+        });
+
+        res.status(200).json({ success: true, trends: trendsMap });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error getting donation and expense trends'
+        });
+    }
+});
 
 
 export default router

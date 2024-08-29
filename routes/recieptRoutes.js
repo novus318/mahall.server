@@ -1,25 +1,25 @@
 import express  from "express";
-import { debitAccount } from "../functions/transaction.js";
-import paymentCategoryModel from "../model/paymentCategoryModel.js";
-import paymentModel from "../model/paymentModel.js";
 import memberModel from "../model/memberModel.js";
+import recieptCategoryModel from "../model/recieptCategoryModel.js";
+import recieptModel from "../model/recieptModel.js";
+import { creditAccount } from "../functions/transaction.js";
 const router=express.Router()
 
 
-router.post('/createPayment/category', async (req, res) => {
+router.post('/createReciept/category', async (req, res) => {
    try {
     const { name, description} = req.body;
-    const category = new paymentCategoryModel({ name, description});
+    const category = new recieptCategoryModel({ name, description});
     await category.save();
     return res.status(201).json({
         success: true,
-        message: 'Payment Category created successfully.',
+        message: 'Reciept Category created successfully.',
         category
     });
    } catch (error) {
     return res.status(500).json({
         success: false,
-        message: 'Failed to create payment category.',
+        message: 'Failed to create reciept category.',
         error: error.message
     });
    }
@@ -27,30 +27,28 @@ router.post('/createPayment/category', async (req, res) => {
 
 router.get('/category/all', async (req, res) => {
     try {
-        const categories = await paymentCategoryModel.find({});
+        const categories = await recieptCategoryModel.find({});
         return res.status(200).json({
             success: true,
-            message: 'Payment Categories retrieved successfully.',
+            message: 'Reciept Categories retrieved successfully.',
             categories
         });
     } catch (error) {
         return res.status(500).json({
             success: false,
-            message: 'Failed to retrieve payment categories.',
+            message: 'Failed to retrieve reciept categories.',
             error: error.message
         });
     }
 })
-router.post('/create-payment', async (req, res) => {
+router.post('/create-reciept', async (req, res) => {
     try {
-        const { items, date, accountId, categoryId, paymentType, memberId, otherRecipient } = req.body;
+        const { amount, date,description, accountId, categoryId, recieptType, memberId, otherRecipient } = req.body;
 
-        // Calculate the total amount from the items array
-        const total = items.reduce((acc, item) => acc + item.amount, 0);
 
         // Validate required fields
-        if (total <= 0 || !accountId || !categoryId || !paymentType) {
-            return res.status(400).json({ message: 'Items, accountId, categoryId, and paymentType are required.' });
+        if (amount <= 0 || !accountId || !categoryId || !recieptType) {
+            return res.status(400).json({ message: 'Items, accountId, categoryId, and reciept type are required.' });
         }
 
         // Validate that either memberId or otherRecipient is provided
@@ -65,37 +63,36 @@ router.post('/create-payment', async (req, res) => {
                 return res.status(404).json({ message: 'Member not found.' });
             }
         }
-
+console.log(recieptType)
         // Create the payment
-        const newPayment = new paymentModel({
-            total,
+        const newReciept = new recieptModel({
+            amount,
             date: date || Date.now(),
+            description,
             accountId,
             categoryId:categoryId._id,
             status:'Pending',
-            paymentType,
+            recieptType:recieptType,
             memberId: memberId || null,
             otherRecipient: memberId ? null : otherRecipient,
-            items // Include the items array
         })
-        await newPayment.save();
+        await newReciept.save();
 
         const category = categoryId.name;
-        const des = `Payment for ${category} by ${paymentType}`;
-        const transaction = await debitAccount(accountId, total, des, category);
+        const transaction = await creditAccount(accountId, amount, description, category);
 
         if (!transaction) {
-            await Payment.findByIdAndDelete(newPayment._id);
+            await Payment.findByIdAndDelete(newReciept._id);
             return res.status(500).json({ success: false, message: 'Error creating payment. Transaction failed.' });
         } else {
-            newPayment.status = 'Completed';
-            await newPayment.save();
+            newReciept.status = 'Completed';
+            await newReciept.save();
         }
 
         return res.status(201).json({
             success: true,
-            message: 'Payment created successfully.',
-            payment: newPayment
+            message: 'Reciept created successfully.',
+            payment: newReciept
         });
 
     } catch (error) {
@@ -103,7 +100,7 @@ router.post('/create-payment', async (req, res) => {
         return res.status(500).json({
             error,
             success: false,
-            message: 'An error occurred while creating the payment.'
+            message: 'An error occurred while creating the reciept.'
         });
     }
 });

@@ -187,7 +187,7 @@ router.get('/kudi-collections/:memberId', async (req, res) => {
         const { memberId } = req.params;
         
         // Find kudi collections by memberId
-        const collections = await kudiCollection.find({ memberId })
+        const collections = await kudiCollection.find({ memberId }).sort({createdAt: -1})
             .populate('memberId')  
             .populate('houseId'); 
         res.status(200).json({success:true ,collections});

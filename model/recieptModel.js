@@ -24,7 +24,13 @@ const receiptSchema = new mongoose.Schema({
         ref: 'receiptCategory', 
         required: true
     },
-    receiptType: {
+    status: {
+        type: String,
+        enum: ['Pending', 'Completed',],
+        default: 'Pending',
+        required: true
+    },
+    recieptType: {
         type: String,
         enum: ['Online', 'Cash'], // Type of receipt: Online or Cash
         required: true // Receipt type is required
@@ -43,8 +49,37 @@ const receiptSchema = new mongoose.Schema({
             type: String,
             required: function() { return !this.memberId; } // Required if memberId is not provided
         }
+    },
+    receiptNumber: {
+        type: String,
+        unique: true // Ensure receipt number is unique
     }
 }, { timestamps: true }); // Timestamps for createdAt and updatedAt
 
+receiptSchema.pre('save', async function (next) {
+    if (this.isNew) {
+        // Find the latest receiptNumber in the collection
+        const latestEntry = await mongoose.model('Receipt').findOne({}, { receiptNumber: 1 })
+            .sort({ createdAt: -1 });
+
+        let newReceiptNumber = 'RA-0001';
+        if (latestEntry && latestEntry.receiptNumber) {
+            const [prefix, numberPart] = latestEntry.receiptNumber.split('-');
+            let lastNumber = parseInt(numberPart, 10);
+
+            // Increment the number part
+            if (lastNumber < 9999) {
+                newReceiptNumber = `${prefix}-${(lastNumber + 1).toString().padStart(4, '0')}`;
+            } else {
+                // Change the prefix if the number part has reached 9999
+                const newPrefix = String.fromCharCode(prefix.charCodeAt(1) + 1);
+                newReceiptNumber = `${prefix[0]}${newPrefix}-0001`;
+            }
+        }
+
+        this.receiptNumber = newReceiptNumber;
+    }
+    next();
+});
 // Export the model
 export default mongoose.model('Receipt', receiptSchema);

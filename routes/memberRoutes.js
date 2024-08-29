@@ -170,6 +170,14 @@ router.post('/create', async (req, res) => {
     }
   })
 
+router.get('/all/names-and-ids', async (req, res) => {
+  try {
+    const members = await memberModel.find({}, { name: 1, _id: 1 });
+    res.status(200).json({ success: true, members });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error fetching member names and IDs', error: error.message });
+  }
+});
 
 
 export default router

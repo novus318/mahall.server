@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
 
 const statusSchema = new mongoose.Schema({
-  status: { type: String, enum: ['Active', 'Inactive', 'On Leave'], required: true }, // Status of the staff member
-  startDate: { type: Date, required: true }, // Date when this status started
-  endDate: { type: Date }, // Date when this status ended, if applicable
+  status: { type: String, enum: ['Active', 'Inactive', 'On Leave'], required: true },
+  startDate: { type: Date, required: true }, 
+  endDate: { type: Date }, 
 });
 
 const staffSchema = new mongoose.Schema({

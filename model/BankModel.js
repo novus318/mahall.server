@@ -4,19 +4,19 @@ import mongoose from "mongoose";
 const bankSchema = new mongoose.Schema({
     name: {
       type: String,
-      required: true // Name of the bank or account
+      required: true
     },
     holderName: {
       type: String,
-      required: true // Name of the account holder
+      required: true 
     },
     accountNumber: {
       type: String,
-      required: function() { return this.accountType === 'bank'; } // Required only if accountType is 'bank'
+      required: function() { return this.accountType === 'bank'; } 
     },
     ifscCode: {
       type: String,
-      required: function() { return this.accountType === 'bank'; } // Required only if accountType is 'bank'
+      required: function() { return this.accountType === 'bank'; } 
     },
     balance: {
       type: Number,

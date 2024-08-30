@@ -232,5 +232,47 @@ router.get('/get-donation-expense-trends', async (req, res) => {
     }
 });
 
+router.get('/get-expense-categories', async (req, res) => {
+    try {
+      const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const today = new Date();
+  
+      const result = await transactionModel.aggregate([
+        {
+          $match: {
+            date: { $gte: startOfMonth, $lte: today },
+            $or: [
+              { type: 'Credit', category: 'Kudi collection' },
+              { type: 'Debit', category: 'Salary' },
+              { type: 'Debit', category: 'Other Expenses' },
+              { type: 'Credit', category: 'Rent' },
+              { type: 'Credit', category: 'Donation' },
+            ]
+          }
+        },
+        {
+          $group: {
+            _id: { type: "$type", category: "$category" },
+            totalAmount: { $sum: "$amount" }
+          }
+        }
+      ]);
+  
+      const response = {
+        KudiCollection: result.find(r => r._id.type === 'Credit' && r._id.category === 'Kudi collection')?.totalAmount || 0,
+        Salary: result.find(r => r._id.type === 'Debit' && r._id.category === 'Salary')?.totalAmount || 0,
+        Rent: result.find(r => r._id.type === 'Credit' && r._id.category === 'Rent')?.totalAmount || 0,
+        Donation: result.find(r => r._id.type === 'Credit' && r._id.category === 'Donation')?.totalAmount || 0,
+        OtherExpenses: result.find(r => r._id.type === 'Debit' && r._id.category === 'Other Expenses')?.totalAmount || 0,
+      };
+      
+  
+      res.status(200).json(response);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
 
 export default router

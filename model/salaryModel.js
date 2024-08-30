@@ -20,7 +20,7 @@ staffId: { type: mongoose.Schema.Types.ObjectId, ref: 'staff', required: true },
     type: mongoose.Schema.Types.ObjectId,
     ref: 'bank',
 },
-  status: { type: String, enum: ['Pending', 'Paid'], default: 'Pending' }, // Payment status
+  status: { type: String, enum: ['Pending', 'Paid','Rejected'], default: 'Pending' }, // Payment status
 }, 
 { timestamps: true }); // To track creation and update times
 

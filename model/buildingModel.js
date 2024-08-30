@@ -14,7 +14,7 @@ const rentCollectionSchema = new mongoose.Schema({
     required: true
 },
     paymentDate: { type: Date},
-    status: { type: String, enum: ['Pending', 'Paid'], default: 'Pending' },
+    status: { type: String, enum: ['Pending', 'Paid','Rejected'], default: 'Pending' },
   }, { timestamps: true });
 
 

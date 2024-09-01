@@ -20,6 +20,8 @@ router.post('/create-house', async (req, res) => {
         // Create a new house document
         const house = new houseModel({
             name: newHouse.name,
+            panchayathNumber:newHouse.panchayathNumber,
+            wardNumber:newHouse.wardNumber,
             number: newHouse.number,
             panchayathNumber: newHouse.panchayathNumber,
             address: newHouse.address,
@@ -192,7 +194,7 @@ router.get('/kudi-collections/:memberId', async (req, res) => {
         const { memberId } = req.params;
         
         // Find kudi collections by memberId
-        const collections = await kudiCollection.find({ memberId }).sort({createdAt: -1})
+        const collections = await kudiCollection.find({ memberId }).sort({createdAt: -1}).limit(10)
             .populate('memberId')  
             .populate('houseId'); 
         res.status(200).json({success:true ,collections});

@@ -40,7 +40,7 @@ const mobile = '7560845014'; // Recipient's mobile number
 const message = `We kindly request you to complete the payment at your earliest convenience.`;
 
 //sendCustomMessage(mobile, message);
-//generateMonthlyCollections()
+// generateMonthlyCollections()
 // generateMonthlySalaries()
 // collectRent()
 cron.schedule('0 10 1 * *', async () => {

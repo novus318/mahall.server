@@ -10,6 +10,9 @@ const houseSchema = new mongoose.Schema({
    panchayathNumber: {
       type: String,
    },
+   wardNumber: {
+      type: String,
+   },
    familyHead: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'member'

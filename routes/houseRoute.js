@@ -21,6 +21,7 @@ router.post('/create-house', async (req, res) => {
         const house = new houseModel({
             name: newHouse.name,
             number: newHouse.number,
+            panchayathNumber: newHouse.panchayathNumber,
             address: newHouse.address,
             status: newHouse.status,
             rationsStatus: newHouse.rationsStatus,
@@ -32,14 +33,18 @@ router.post('/create-house', async (req, res) => {
 
         // Create a new member document with the house reference
         const member = new memberModel({
-            name: newMember.name,
-            status: newMember.status,
-            DOB: newMember.DOB,
-            maritalStatus: newMember.maritalStatus,
-            education: newMember.education,
-            gender: newMember.gender,
-            mobile: newMember.mobile,
+            name:newMember.name,
+            status:newMember.status,
+            DOB:newMember.DOB,
+            maritalStatus:newMember.maritalStatus,
+            education:newMember.education,
+            madrassa:newMember.madrassa,
+            gender:newMember.gender,
+            mobile:newMember.mobile,
+            whatsappNumber:newMember.whatsappNumber,
             place:newMember.place,
+            idCards:newMember.idCards,
+            bloodGroup:newMember.bloodGroup,
             house: savedHouse._id, // Reference to the newly created house
         });
 

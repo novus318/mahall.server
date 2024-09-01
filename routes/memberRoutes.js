@@ -16,9 +16,13 @@ router.post('/create', async (req, res) => {
         DOB:newMember.DOB,
         maritalStatus:newMember.maritalStatus,
         education:newMember.education,
+        madrassa:newMember.madrassa,
         gender:newMember.gender,
         mobile:newMember.mobile,
+        whatsappNumber:newMember.whatsappNumber,
         place:newMember.place,
+        idCards:newMember.idCards,
+        bloodGroup:newMember.bloodGroup,
         house:houseId,
       });
       if (selectedRelation && mongoose.Types.ObjectId.isValid(selectedRelation.memberId)) {

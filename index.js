@@ -18,6 +18,8 @@ import { collectRent } from "./functions/generateRent.js"
 import dashboardRoutes from './routes/dashboardRoutes.js'
 import paymentRoutes from './routes/paymentRoutes.js'
 import recieptRoutes from './routes/recieptRoutes.js'
+import messageRoutes from './routes/messageRoute.js'
+
 const app = express();
 const PORT = 8000;
 app.use(cors({
@@ -34,6 +36,10 @@ app.use(morgan('dev'))
 
 //database configcon
 connectDB();
+const mobile = '7560845014'; // Recipient's mobile number
+const message = `We kindly request you to complete the payment at your earliest convenience.`;
+
+//sendCustomMessage(mobile, message);
 //generateMonthlyCollections()
 // generateMonthlySalaries()
 // collectRent()
@@ -56,6 +62,7 @@ app.use('/api/rent',buildingRoutes)
 app.use('/api/transactions',transactionRoutes)
 app.use('/api/pay',paymentRoutes)
 app.use('/api/reciept',recieptRoutes)
+app.use('/api/message',messageRoutes)
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

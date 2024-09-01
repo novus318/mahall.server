@@ -60,16 +60,15 @@ const sendWhatsAppMessage = async (house,month) => {
                 template: {
                     name: 'collection',
                     language: {
-                        code: 'en' 
+                        code: 'ml' 
                     },
                     components: [
                         {
                             type: 'body',
                             parameters: [
-                                { type: 'text', text: house.familyHead.name },      // {{1}} -> recipientName
-                                { type: 'text', text: house.collectionAmount },   // {{2}} -> collectionAmount
-                                { type: 'text', text: house.name },          // {{3}} -> houseName
-                                { type: 'text', text: month },              // {{4}} -> month
+                                { type: 'text', text: house.familyHead.name }, 
+                                { type: 'text', text: month },   
+                                { type: 'text', text: house.collectionAmount },
                             ]
                         },
                         {
@@ -77,7 +76,7 @@ const sendWhatsAppMessage = async (house,month) => {
                             sub_type: 'url',
                             index: '0',
                             parameters: [
-                                { type: 'text', text: `${house.familyHead._id}` }         // {{1}} -> paymentUrl
+                                { type: 'text', text: `${house.familyHead._id}` }  
                             ]
                         }
                     ]
@@ -107,7 +106,7 @@ export const sendWhatsAppMessageFunction = async (collection) => {
                 template: {
                     name: 'collection_reciept',
                     language: {
-                        code: 'en' 
+                        code: 'ml' 
                     },
                     components: [
                         {
@@ -121,10 +120,14 @@ export const sendWhatsAppMessageFunction = async (collection) => {
                                     type: 'text',
                                     text: `${collection.amount}`
                                 },
-                                {
-                                    type: 'text',
-                                    text: `https://mahall.vercel.app/payment-reciept/${collection.memberId._id}`
-                                },
+                            ]
+                        },
+                        {
+                            type: 'button',
+                            sub_type: 'url',
+                            index: '0',
+                            parameters: [
+                                { type: 'text', text: `${collection.memberId._id}` }         // {{1}} -> paymentUrl
                             ]
                         }
                     ]
@@ -140,6 +143,8 @@ export const sendWhatsAppMessageFunction = async (collection) => {
         console.log('WhatsApp message sent successfully:', response.data.messages);
 
     } catch (error) {
-        
+        console.log(error.response.data)
     }
 };
+
+

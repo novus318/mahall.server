@@ -258,13 +258,13 @@ router.get('/get-expense-categories', async (req, res) => {
         }
       ]);
   
-      const response = {
-        KudiCollection: result.find(r => r._id.type === 'Credit' && r._id.category === 'Kudi collection')?.totalAmount || 0,
-        Salary: result.find(r => r._id.type === 'Debit' && r._id.category === 'Salary')?.totalAmount || 0,
-        Rent: result.find(r => r._id.type === 'Credit' && r._id.category === 'Rent')?.totalAmount || 0,
-        Donation: result.find(r => r._id.type === 'Credit' && r._id.category === 'Donation')?.totalAmount || 0,
-        OtherExpenses: result.find(r => r._id.type === 'Debit' && r._id.category === 'Other Expenses')?.totalAmount || 0,
-      };
+      const response = [
+        { asset: "Kudi Collection", amount: result.find(r => r._id.type === 'Credit' && r._id.category === 'Kudi collection')?.totalAmount || 0, fill: '#8884d8' },
+        { asset: "Salary", amount: result.find(r => r._id.type === 'Debit' && r._id.category === 'Salary')?.totalAmount || 0, fill: '#82ca9d' },
+        { asset: "Rent", amount: result.find(r => r._id.type === 'Credit' && r._id.category === 'Rent')?.totalAmount || 0, fill: '#0088FE' },
+        { asset: "Donation", amount: result.find(r => r._id.type === 'Credit' && r._id.category === 'Donation')?.totalAmount || 0, fill: '#dba054' },
+        { asset: "Other Expenses", amount: result.find(r => r._id.type === 'Debit' && r._id.category === 'Other Expenses')?.totalAmount || 0, fill: '#FFBB28' },
+      ];
       
   
       res.status(200).json(response);

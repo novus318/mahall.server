@@ -7,6 +7,9 @@ const houseSchema = new mongoose.Schema({
       type: String,
       unique: true // This ensures the number is unique
    },
+   panchayathNumber: {
+      type: String,
+   },
    familyHead: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'member'

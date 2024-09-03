@@ -83,11 +83,15 @@ router.post('/create', async (req, res) => {
         name:newMember.name,
         status:newMember.status,
         DOB:newMember.DOB,
-        place:newMember.place,
         maritalStatus:newMember.maritalStatus,
         education:newMember.education,
+        madrassa:newMember.madrassa,
         gender:newMember.gender,
         mobile:newMember.mobile,
+        whatsappNumber:newMember.whatsappNumber,
+        place:newMember.place,
+        idCards:newMember.idCards,
+        bloodGroup:newMember.bloodGroup,
         house:houseId,
       });
       if (selectedRelation.memberId && mongoose.Types.ObjectId.isValid(selectedRelation.memberId)) {

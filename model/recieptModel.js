@@ -37,7 +37,7 @@ const receiptSchema = new mongoose.Schema({
     },
     memberId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Member', // Reference to the member associated with the receipt (if applicable)
+        ref: 'member', // Reference to the member associated with the receipt (if applicable)
         required: function() { return !this.otherRecipient; } // Required if otherRecipient is not provided
     },
     otherRecipient: {

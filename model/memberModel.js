@@ -100,6 +100,10 @@ const memberSchema = new mongoose.Schema({
     panCard: {
       type: Boolean,
       required: true
+    },
+    HealthCard:{
+      type: Boolean,
+      required: true
     }
   },
   bloodGroup: {

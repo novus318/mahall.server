@@ -3,6 +3,7 @@ import houseModel from "../model/houseModel.js";
 import mongoose from "mongoose";
 import memberModel from "../model/memberModel.js";
 import kudiCollection from "../model/kudiCollection.js";
+import receiptModel from "../model/recieptModel.js";
 import { sendWhatsAppMessageFunction } from "../functions/generateMonthlyCollections.js";
 import { creditAccount } from "../functions/transaction.js";
 const router=express.Router()
@@ -67,9 +68,9 @@ router.post('/create-house', async (req, res) => {
 
 
 router.put('/edit-house', async(req, res) => {
-    const { _id, name,number,address,familyHead,collectionAmount,status,rationsStatus } = req.body;
+    const { _id, name,number,address,familyHead,collectionAmount,status,rationsStatus,panchayathNumber,wardNumber } = req.body;
 try {
-    const updatedHouse = await houseModel.findByIdAndUpdate(_id, { name,number,address,status,rationsStatus }, { new: true });
+    const updatedHouse = await houseModel.findByIdAndUpdate(_id, { name,number,address,status,rationsStatus,panchayathNumber,wardNumber }, { new: true });
     if(familyHead && mongoose.Types.ObjectId.isValid(familyHead)){
         updatedHouse.familyHead = familyHead;
     }
@@ -201,6 +202,41 @@ router.get('/kudi-collections/:memberId', async (req, res) => {
     } catch (error) {
         console.error('Error fetching kudi collections by memberId:', error);
         res.status(500).json({ success:false,message: 'Server error. Could not fetch kudi collections.' });
+    }
+});
+
+router.get('/kudi-contribution/:houseId', async (req, res) => {
+    try {
+        const { houseId } = req.params;
+
+        // Step 1: Fetch all members associated with the given houseId
+        const members = await memberModel.find({ house: houseId }).select('_id name');
+
+        if (!members || members.length === 0) {
+            return res.status(404).json({ message: 'No members found for the specified house.' });
+        }
+
+        const memberIds = members.map(member => member._id);
+
+        // Step 2: Retrieve all receipts for those members
+        const receipts = await receiptModel.find({ memberId: { $in: memberIds } })
+            .populate('accountId', 'name') 
+            .populate('categoryId', 'name')
+            .populate('memberId', 'name') 
+            .sort({ createdAt: -1 }); 
+
+            const totalContributions = receipts.reduce((total, receipt) => total + receipt.amount, 0);
+
+        res.status(200).json({ 
+            success: true,
+            totalContributions,
+            receipts });
+
+    } catch (error) {
+        console.error('Error fetching kudi contributions:', error);
+        res.status(500).json({
+            success: false, 
+            message: 'An error occurred while fetching kudi contributions.' });
     }
 });
 

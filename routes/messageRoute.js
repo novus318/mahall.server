@@ -25,7 +25,7 @@ router.post('/webhook', async (req, res) => {
 
                     await newMessage.save();
 
-                    console.log('Message saved:', newMessage);
+                    console.log('Message saved:', changes[0].value.contacts[0].profile.name);
                 }
             }
         }

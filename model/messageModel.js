@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 // Define the schema for a receipt category
 const messageSchema = new mongoose.Schema({
+    senderName: { type: String, },
     senderNumber: { type: String, required: true },
     messageContent: { type: String, required: true },
     messageType: { type: String, required: true }, // text, image, etc.

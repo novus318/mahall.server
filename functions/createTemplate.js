@@ -10,7 +10,7 @@ export const sendCustomMessage = async (mobile, message) => {
             WHATSAPP_API_URL,
             {
                 messaging_product: 'whatsapp',
-                to: `+91${mobile}`,
+                to: `91${mobile}`,
                 type: 'text',
                 text: {
                     body: message
@@ -23,9 +23,9 @@ export const sendCustomMessage = async (mobile, message) => {
                 }
             }
         );
-        console.log('WhatsApp message sent successfully:', response.data);
-
+        console.log('Message sent successfully:', response.data.contacts);
+        console.log('Message sent successfully:', response.data.messages);
     } catch (error) {
-        console.error('Error sending WhatsApp message:', error);
+      console.error('Error sending message:', error.response ? error.response.data : error.message);
     }
-};
+  }

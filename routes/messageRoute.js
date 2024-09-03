@@ -18,6 +18,7 @@ router.post('/webhook', async (req, res) => {
 
                     // Save the message to MongoDB
                     const newMessage = new messageModel({
+                        senderName: changes[0].value.contacts[0].profile.name, 
                         senderNumber: message.from,
                         messageContent: message.text.body, // assuming it's a text message
                         messageType: message.type,
@@ -25,7 +26,7 @@ router.post('/webhook', async (req, res) => {
 
                     await newMessage.save();
 
-                    console.log('Message saved:', changes[0].value.contacts[0].profile.name);
+                    console.log('Message saved:', newMessage);
                 }
             }
         }

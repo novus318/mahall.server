@@ -62,30 +62,6 @@ const paymentSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-paymentSchema.pre('save', async function (next) {
-    if (this.isNew) {
-        // Find the latest receiptNumber in the collection
-        const latestEntry = await mongoose.model('Payment').findOne({}, { receiptNumber: 1 })
-            .sort({ createdAt: -1 });
 
-        let newReceiptNumber = 'PA-0001';
-        if (latestEntry && latestEntry.receiptNumber) {
-            const [prefix, numberPart] = latestEntry.receiptNumber.split('-');
-            let lastNumber = parseInt(numberPart, 10);
-
-            // Increment the number part
-            if (lastNumber < 9999) {
-                newReceiptNumber = `${prefix}-${(lastNumber + 1).toString().padStart(4, '0')}`;
-            } else {
-                // Change the prefix if the number part has reached 9999
-                const newPrefix = String.fromCharCode(prefix.charCodeAt(1) + 1);
-                newReceiptNumber = `${prefix[0]}${newPrefix}-0001`;
-            }
-        }
-
-        this.receiptNumber = newReceiptNumber;
-    }
-    next();
-});
 // Export the model
 export default mongoose.model('Payment', paymentSchema);

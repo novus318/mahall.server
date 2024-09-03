@@ -148,7 +148,7 @@ router.get('/get/paid/collections', async (req, res) => {
 
 router.put('/update/collection/:id', async (req, res) => {
     try {
-        const { paymentType } = req.body;
+        const { paymentType,targetAccount } = req.body;
         const collectionId = req.params.id;
 
         // Find the kudiCollection by ID and update it
@@ -156,6 +156,7 @@ router.put('/update/collection/:id', async (req, res) => {
             collectionId,
             {
                 kudiCollectionType: paymentType, 
+                accountId:targetAccount,
                 status: 'Paid', 
                 PaymentDate: new Date(),
             },
@@ -175,6 +176,7 @@ router.put('/update/collection/:id', async (req, res) => {
                 {
                     kudiCollectionType: paymentType, 
                     status: 'Unpaid', 
+                    accountId:targetAccount,
                     PaymentDate: new Date(),
                 },
                 { new: true }

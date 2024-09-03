@@ -19,6 +19,7 @@ import dashboardRoutes from './routes/dashboardRoutes.js'
 import paymentRoutes from './routes/paymentRoutes.js'
 import recieptRoutes from './routes/recieptRoutes.js'
 import messageRoutes from './routes/messageRoute.js'
+import settingRoutes from './routes/settingRoutes.js'
 
 const app = express();
 const PORT = 8000;
@@ -43,6 +44,7 @@ const message = `We kindly request you to complete the payment at your earliest 
 // generateMonthlyCollections()
 // generateMonthlySalaries()
 // collectRent()
+
 cron.schedule('0 10 1 * *', async () => {
   await generateMonthlyCollections();
 });
@@ -63,6 +65,7 @@ app.use('/api/transactions',transactionRoutes)
 app.use('/api/pay',paymentRoutes)
 app.use('/api/reciept',recieptRoutes)
 app.use('/api/message',messageRoutes)
+app.use('/api/setting',settingRoutes)
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

@@ -3,22 +3,35 @@ import dotenv from 'dotenv'
 import BankModel from "../model/BankModel.js";
 import houseModel from "../model/houseModel.js";
 import kudiCollection from "../model/kudiCollection.js";
+import receiptNumberModel from "../model/recieptNumberModel.js";
+import { NextReceiptNumber } from "./recieptNumber.js";
 
 dotenv.config({ path: './.env' })
 const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL;
 const ACCESS_TOKEN = process.env.WHATSAPP_TOKEN;
 
+async function getLastCollectionReceiptNumber() {
+    try {
+        const receiptNumber = await receiptNumberModel.findOne({}, 'collectionReceiptNumber.lastNumber');
+        if (receiptNumber && receiptNumber.collectionReceiptNumber) {
+            return receiptNumber.collectionReceiptNumber.lastNumber;
+        } else {
+            throw new Error('No receipt number found');
+        }
+    } catch (error) {
+        console.error('Error retrieving last collection receipt number:', error);
+        throw error;
+    }
+}
 
 export const generateMonthlyCollections = async () => {
     try {
         const lastMonth = new Date();
         lastMonth.setMonth(lastMonth.getMonth() - 1);
         const lastMonthName = lastMonth.toLocaleString('default', { month: 'long' });
-        const houses = await houseModel.find().populate('familyHead'); // Fetch all houses and populate the familyHead field
-        const primaryBank = await BankModel.findOne({ primary: true });
-        if (!primaryBank) {
-            throw new Error('Primary bank account not found');
-        }
+        const houses = await houseModel.find().populate('familyHead');
+const lastRecieptNumber=await getLastCollectionReceiptNumber()
+const newRecieptNumber = await NextReceiptNumber(lastRecieptNumber);
         for (const house of houses) {
             const collection = new kudiCollection({
                 amount: house.collectionAmount,
@@ -28,10 +41,10 @@ export const generateMonthlyCollections = async () => {
                     name: 'Kudi collection',
                     description: `Monthly collection for ${house.familyHead.name || 'the house'}`,
                 },
-                accountId:primaryBank._id,
                 memberId: house.familyHead._id,
                 houseId: house._id, 
                 status: 'Unpaid',
+                receiptNumber:newRecieptNumber
             });
 
             await collection.save();
@@ -55,7 +68,7 @@ const sendWhatsAppMessage = async (house,month) => {
             WHATSAPP_API_URL,
             {
                 messaging_product: 'whatsapp',
-                to: `+91${house.familyHead.mobile}`,
+                to: `+91${house.familyHead.whatsappNumber}`,
                 type: 'template',
                 template: {
                     name: 'collection',
@@ -101,7 +114,7 @@ export const sendWhatsAppMessageFunction = async (collection) => {
             WHATSAPP_API_URL,
             {
                 messaging_product: 'whatsapp',
-                to: `+91${collection.memberId.mobile}`,
+                to: `+91${collection.memberId.whatsappNumber}`,
                 type: 'template',
                 template: {
                     name: 'collection_reciept',

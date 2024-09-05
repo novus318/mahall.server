@@ -1,5 +1,11 @@
+import axios from "axios";
 import salaryModel from "../model/salaryModel.js";
 import staffModel from "../model/staffModel.js";
+import dotenv from 'dotenv'
+
+dotenv.config({ path: './.env' })
+const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL;
+const ACCESS_TOKEN = process.env.WHATSAPP_TOKEN;
 
 export const generateMonthlySalaries = async () => {
     try {
@@ -14,13 +20,33 @@ export const generateMonthlySalaries = async () => {
         
 
         // Find all active staff members
-        const activeStaffs = await staffModel.find({ "statusHistory.status": "Active" });
-
+        const activeStaffs = await staffModel.find({
+            $expr: {
+                $eq: [{ $arrayElemAt: ["$statusHistory.status", -1] }, "Active"]
+            }
+        });
         // Loop through each active staff and create a salary record
         for (const staff of activeStaffs) {
+            let salaryAmount;
+            let advanceAmount
+
+            // Check if it's the first salary
+            if (staff.firstSalary !== 0) {
+                salaryAmount = staff.firstSalary;
+
+                // Update firstSalary to 0 after the first salary is generated
+                staff.firstSalary = 0;
+                await staff.save();
+            } else {
+                salaryAmount = staff.salary;
+                advanceAmount = staff.advancePay
+                staff.advancePay = 0;
+                await staff.save();
+            }
             const salary = new salaryModel({
                 staffId: staff._id,
-                basicPay: staff.salary,
+                basicPay: salaryAmount,
+                advancePay:advanceAmount,
                 salaryPeriod: {
                     startDate: startOfLastMonth,
                     endDate: startOfMonth
@@ -38,11 +64,12 @@ export const generateMonthlySalaries = async () => {
 
 export const sendWhatsAppSalary = async (salary) => {
     try {
+        const month = salary.salaryPeriod?.startDate?.toLocaleString('default', { month: 'long' });
         const response = await axios.post(
             WHATSAPP_API_URL,
             {
                 messaging_product: 'whatsapp',
-                to: `+91${salary.staffId.contactInfo.phone}`,
+                to: `91${salary.staffId.contactInfo.phone}`,
                 type: 'template',
                 template: {
                     name: 'salary_confirm',
@@ -54,10 +81,18 @@ export const sendWhatsAppSalary = async (salary) => {
                             type: 'body',
                             parameters: [
                                 { type: 'text', text: salary.staffId.name },     
-                                { type: 'text', text: salary.netPay },   
-                                { type: 'text', text: `https://mahall.vercel.app/salary/${salary.staffId}` },        
+                                { type: 'text', text: month },   
+                                { type: 'text', text: salary.netPay},        
                             ]
                         },
+                        {
+                            type: 'button',
+                            sub_type: 'url',
+                            index: '0',
+                            parameters: [
+                                { type: 'text', text: `${salary.staffId._id}` }  
+                            ]
+                        }
                     ]
                 }
             },
@@ -70,7 +105,7 @@ export const sendWhatsAppSalary = async (salary) => {
         );
         console.log('WhatsApp message sent successfully:', response.data);
     } catch (error) {
-        console.error('Error sending WhatsApp message:', error.response);
+        console.error('Error sending WhatsApp message:', error);
     }
 };
 

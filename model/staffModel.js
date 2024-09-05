@@ -17,6 +17,11 @@ const staffSchema = new mongoose.Schema({
   position: { type: String, required: true },
   salary: { type: Number, required: true },
   joinDate: { type: Date, default: Date.now },
+  firstSalary:{
+    type: Number,
+    required: true,
+  },
+  advancePay: { type: Number, default: 0 },
   contactInfo: {
     phone: { type: String, required: true },
     email: { type: String, required: true },

@@ -9,7 +9,7 @@ const router=express.Router()
 
 router.post('/create', async (req, res) => {
     try {
-        const { name, age, employeeId, department, position, salary, joinDate, contactInfo } = req.body;
+        const { name, age, employeeId, department, position, salary,firstSalary, joinDate, contactInfo } = req.body;
 
         const existingStaff = await staffModel.findOne({ employeeId: employeeId });
         if (existingStaff) {
@@ -22,6 +22,7 @@ router.post('/create', async (req, res) => {
             employeeId,
             department,
             position,
+            firstSalary,
             salary,
             joinDate,
             contactInfo,
@@ -71,10 +72,10 @@ router.put('/update-status/:id', async (req, res) => {
 
         await staff.save();
 
-        res.status(200).json({ message: 'Staff status updated successfully', staff });
+        res.status(200).json({ success:true ,message: 'Staff status updated successfully', staff });
     } catch (error) {
         console.error('Error updating staff status:', error);
-        res.status(500).json({ message: 'Error updating staff status' });
+        res.status(500).json({success:false, message: 'Error updating staff status' });
     }
 });
 
@@ -84,7 +85,7 @@ router.put('/edit/:id', async (req, res) => {
         const { name, age, employeeId, department, position, salary, joinDate, contactInfo } = req.body;
 
         // Find staff member by ID and update
-        const updatedStaff = await Staff.findByIdAndUpdate(
+        const updatedStaff = await staffModel.findByIdAndUpdate(
             id,
             {
                 name,
@@ -109,6 +110,7 @@ router.put('/edit/:id', async (req, res) => {
             success:true,
             message: 'Staff member updated successfully', staff: updatedStaff });
     } catch (error) {
+        console.log(error)
         res.status(500).json({ 
             error,
             success:true,
@@ -153,7 +155,9 @@ router.get('/get/:id', async (req, res) => {
                 message: 'Staff member not found' });
             }
 
-            const payslips = await salaryModel.find({ staffId: id });
+            const payslips = await salaryModel.find({ staffId: id, status:{ $ne: 'Pending' } }).limit(10).sort({
+                updatedAt: -1,
+            });
 
         res.status(200).json({ success:true, message: 'Staff member retrieved successfully', staff,payslips });
     } catch (error) {
@@ -195,9 +199,20 @@ router.get('/pending-salaries', async (req, res) => {
 
 router.put('/update/salary/:id', async (req, res) => {
     const payslipId = req.params.id;
-    const { deductions, netPay, paymentDate,accountId } = req.body; // Extract the fields from the request body
+    const { deductions, netPay,status, paymentDate,accountId } = req.body; // Extract the fields from the request body
 
     try {
+        if(status === 'Rejected'){
+            await salaryModel.findByIdAndUpdate(
+                payslipId,
+                { status: 'Rejected' },
+                { new: true }
+            )
+            return res.status(200).json({ 
+                success: true,
+                message: 'Payroll rejected successfully',
+            });
+        }
         // Find the payslip by ID and update it
         const updatePayslip = await salaryModel.findByIdAndUpdate(
             payslipId,
@@ -205,7 +220,7 @@ router.put('/update/salary/:id', async (req, res) => {
                 deductions,
                 netPay,
                 paymentDate,
-                status: 'Paid',
+                status: status,
                 accountId,
              },
             { new: true }
@@ -228,6 +243,7 @@ router.put('/update/salary/:id', async (req, res) => {
                 )
                 return res.status(500).json({ message: 'Error processing transaction please check your account balance' });
             }else{
+                sendWhatsAppSalary(updatePayslip)
                 res.status(200).json({ 
                     success: true,
                     message: 'Payroll updated successfully', 
@@ -240,6 +256,59 @@ router.put('/update/salary/:id', async (req, res) => {
             error,
             success: false,
             message: 'Error updating payroll' 
+        });
+    }
+});
+
+router.post('/request-advance-pay/:id', async (req, res) => {
+    const staffId = req.params.id;
+    const { amount, targetAccount } = req.body; // Extract the fields from the request body
+try {
+    const updatedStaff = await staffModel.findById(staffId);
+    if (!updatedStaff) {
+        return res.status(404).json({ 
+            success: false,
+            message: 'Staff member not found' 
+        });
+    }
+    updatedStaff.advancePay += amount
+    const description = `Advance salary payment for ${updatedStaff.name}`
+    const category = 'Salary'
+    const transaction = debitAccount(targetAccount,amount,description,category)
+    if(!transaction){
+        updatedStaff.advancePay -= amount
+        return res.status(500).json({ success:false,message: 'Error processing transaction please check your account balance' });
+    }else{
+    await updatedStaff.save()
+    res.status(200).json({ 
+        success: true,
+        message: 'Advance payment  successfull', 
+        updatedStaff 
+    });
+}
+} catch (error) {
+    res.status(500).json({ 
+        error,
+        success: false,
+        message: 'Error processing advance payment' 
+    });
+}
+ 
+});
+router.get('/pending-salary/:id', async (req, res) => {
+    try {
+        const staffId = req.params.id;
+        // Fetch all pending payslips for a specific staff member
+        const payslips = await salaryModel.find({ staffId, status: 'Pending' }).sort({
+            createdAt: -1,
+        }).populate('staffId');
+
+        res.status(200).json({ success: true, payslips });
+    } catch (error) {
+        res.status(500).json({ 
+            error,
+            success: false,
+            message: 'Error retrieving pending payrolls' 
         });
     }
 });

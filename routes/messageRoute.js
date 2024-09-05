@@ -54,6 +54,52 @@ router.get('/webhook', async (req, res) => {
   }
 })
 
+router.get('/messages', async (req, res) => {
+  try {
+    const messages = await messageModel.find().sort({ createdAt: -1 });
+    res.json({
+      success: true
+      ,messages});
+  } catch (error) {
+    res.status(500).send({
+      success: false
+     , message: 'Server Error'
+     , error: error.message
+    });
+  }
+})
+
+router.delete('/messages/delete', async (req, res) => {
+  const { senderName, senderNumber } = req.body;
+
+  try {
+      // Ensure senderNumber is provided
+      if (!senderNumber) {
+          return res.status(400).json({ error: 'Sender number is required.' });
+      }
+
+      // Build the query
+      const query = { senderNumber };
+
+      // Add senderName to the query if it's provided
+      if (senderName) {
+          query.senderName = senderName;
+      }
+
+      // Delete messages
+      const result = await messageModel.deleteMany(query);
+
+      if (result.deletedCount === 0) {
+          return res.status(404).json({ message: 'No messages found to delete.' });
+      }
+
+      // Return success response
+      res.status(200).json({ success:true});
+  } catch (error) {
+      res.status(500).json({ success:true,error: 'An error occurred while deleting messages.' });
+  }
+});
+
 
 
 export default router

@@ -3,6 +3,8 @@ import { debitAccount } from "../functions/transaction.js";
 import paymentCategoryModel from "../model/paymentCategoryModel.js";
 import paymentModel from "../model/paymentModel.js";
 import memberModel from "../model/memberModel.js";
+import recieptNumberModel from "../model/recieptNumberModel.js";
+import { NextReceiptNumber } from "../functions/recieptNumber.js";
 const router=express.Router()
 
 
@@ -43,7 +45,7 @@ router.get('/category/all', async (req, res) => {
 })
 router.post('/create-payment', async (req, res) => {
     try {
-        const { items, date, accountId, categoryId, paymentType, memberId, otherRecipient } = req.body;
+        const { receiptNumber,items, date, accountId, categoryId, paymentType, memberId, otherRecipient } = req.body;
 
         // Calculate the total amount from the items array
         const total = items.reduce((acc, item) => acc + item.amount, 0);
@@ -65,6 +67,12 @@ router.post('/create-payment', async (req, res) => {
                 return res.status(404).json({ message: 'Member not found.' });
             }
         }
+        if(receiptNumber){
+            const checkRecieptNumber = await paymentModel.findOne({receiptNumber:receiptNumber});
+            if (checkRecieptNumber) {
+                    return res.status(400).json({ message: 'Reciept number already exists.' })
+            }
+        }
 
         // Create the payment
         const newPayment = new paymentModel({
@@ -76,7 +84,8 @@ router.post('/create-payment', async (req, res) => {
             paymentType,
             memberId: memberId || null,
             otherRecipient: memberId ? null : otherRecipient,
-            items // Include the items array
+            items,
+            receiptNumber
         })
         await newPayment.save();
 
@@ -90,6 +99,11 @@ router.post('/create-payment', async (req, res) => {
         } else {
             newPayment.status = 'Completed';
             await newPayment.save();
+            const UptdateReceiptNumber = await recieptNumberModel.findOne();
+            if (UptdateReceiptNumber) {
+                UptdateReceiptNumber.paymentReceiptNumber.lastNumber = receiptNumber;
+                await UptdateReceiptNumber.save();
+            }
         }
 
         return res.status(201).json({
@@ -108,6 +122,36 @@ router.post('/create-payment', async (req, res) => {
     }
 });
 
+
+router.get('/get-payment/number', async (req, res) => {
+    try {
+        // Find the document that contains the payment receipt number.
+        const receiptNumber = await recieptNumberModel.findOne();
+        // If the document exists, return the last payment receipt number.
+        if (receiptNumber && receiptNumber.paymentReceiptNumber) {
+            const lastNumber = receiptNumber.paymentReceiptNumber.lastNumber
+            const newNumber = await NextReceiptNumber(lastNumber)
+
+            // Return the new payment receipt number
+            return res.status(200).json({ success: true, paymentNumber: newNumber });
+        } 
+    } catch (error) {
+       console.log(error)
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+router.get('/get/payments',async(req,res)=>{
+    try {
+        const payments = await paymentModel.find({}).sort({
+            createdAt: -1,
+        }).populate('categoryId memberId otherRecipient');
+        res.status(200).json({ success: true, payments });
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+})
 
 
 

@@ -51,10 +51,6 @@ const paymentSchema = new mongoose.Schema({
             type: String,
             required: function() { return !this.memberId; } 
         },
-        number: {
-            type: String,
-            required: function() { return !this.memberId; } 
-        }
     },
     receiptNumber: {
         type: String,

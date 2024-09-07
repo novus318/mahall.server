@@ -3,6 +3,8 @@ import memberModel from "../model/memberModel.js";
 import recieptCategoryModel from "../model/recieptCategoryModel.js";
 import recieptModel from "../model/recieptModel.js";
 import { creditAccount } from "../functions/transaction.js";
+import recieptNumberModel from "../model/recieptNumberModel.js";
+import { NextReceiptNumber } from "../functions/recieptNumber.js";
 const router=express.Router()
 
 
@@ -43,7 +45,7 @@ router.get('/category/all', async (req, res) => {
 })
 router.post('/create-reciept', async (req, res) => {
     try {
-        const { amount, date,description, accountId, categoryId, recieptType, memberId, otherRecipient } = req.body;
+        const { receiptNumber, amount, date,description, accountId, categoryId, recieptType, memberId, otherRecipient } = req.body;
 
 
         // Validate required fields
@@ -56,6 +58,7 @@ router.post('/create-reciept', async (req, res) => {
             return res.status(400).json({ message: 'Either member or otherRecipient with a name is required.' });
         }
 
+        if(!memberId && !otherRecipient.number)
         // If memberId is provided, validate that the member exists
         if (memberId) {
             const memberExists = await memberModel.findById(memberId);
@@ -63,7 +66,13 @@ router.post('/create-reciept', async (req, res) => {
                 return res.status(404).json({ message: 'Member not found.' });
             }
         }
-console.log(recieptType)
+
+        if(receiptNumber){
+            const checkRecieptNumber = await recieptModel.findOne({receiptNumber:receiptNumber});
+            if (checkRecieptNumber) {
+                    return res.status(400).json({ message: 'Reciept number already exists.' })
+            }
+        }
         // Create the payment
         const newReciept = new recieptModel({
             amount,
@@ -75,6 +84,7 @@ console.log(recieptType)
             recieptType:recieptType,
             memberId: memberId || null,
             otherRecipient: memberId ? null : otherRecipient,
+            receiptNumber
         })
         await newReciept.save();
 
@@ -87,6 +97,11 @@ console.log(recieptType)
         } else {
             newReciept.status = 'Completed';
             await newReciept.save();
+            const UptdateReceiptNumber = await recieptNumberModel.findOne();
+            if (UptdateReceiptNumber) {
+                UptdateReceiptNumber.receiptReceiptNumber.lastNumber = receiptNumber;
+                await UptdateReceiptNumber.save();
+            }
         }
 
         return res.status(201).json({
@@ -105,6 +120,35 @@ console.log(recieptType)
     }
 });
 
+router.get('/get-reciept/number', async (req, res) => {
+    try {
+       
+        const receiptNumber = await recieptNumberModel.findOne();
+       
+        if (receiptNumber && receiptNumber.receiptReceiptNumber) {
+            const lastNumber = receiptNumber.receiptReceiptNumber.lastNumber
+            const newNumber = await NextReceiptNumber(lastNumber)
+
+            return res.status(200).json({ success: true, Number: newNumber });
+        } 
+    } catch (error) {
+       console.log(error)
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+
+router.get('/get-reciepts', async (req, res) => {
+    try {
+        const reciepts = await recieptModel.find({}).sort({
+            createdAt: -1,
+        }).populate('categoryId memberId otherRecipient');
+        res.status(200).json({ success: true, reciepts });
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+})
 
 
 

@@ -74,7 +74,7 @@ export const sendWhatsAppSalary = async (salary) => {
                 template: {
                     name: 'salary_confirm',
                     language: {
-                        code: 'en' 
+                        code: 'ml' 
                     },
                     components: [
                         {

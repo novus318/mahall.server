@@ -10,12 +10,48 @@ const rentCollectionSchema = new mongoose.Schema({
   },
   accountId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'bank', // Reference to the bank account where the kudiCollection is recorded
-    required: true
+    ref: 'bank', 
 },
     paymentDate: { type: Date},
+    deductions: [{
+      name: { type: String},
+      amount: { type: Number}
+    }],
+    paymentMethod: {
+      type: String,
+      enum: ['Cash', 'Online'], 
+      default: 'Cash'
+  },
     status: { type: String, enum: ['Pending', 'Paid','Rejected'], default: 'Pending' },
   }, { timestamps: true });
+
+  const depositTransactionSchema = new mongoose.Schema({
+    amount: { 
+        type: Number, 
+        required: true 
+    },
+    transactionType: { 
+        type: String, 
+        enum: ['Paid', 'Returned'], 
+        required: true 
+    },
+    paymentMethod: {
+        type: String,
+        enum: ['Cash', 'Online'], 
+        default: 'Cash'
+    },
+    deduction: { 
+      type: Number, 
+      default: 0 
+  },
+  deductionReason: { 
+      type: String 
+  },
+    paymentDate: { 
+        type: Date, 
+        default: Date.now 
+    },
+}, { timestamps: true });
 
 
 
@@ -31,10 +67,12 @@ const tenantSchema = new mongoose.Schema({
     to: { type: Date, required: true },
     tenant: { type: tenantSchema, required: true },
     rent: { type: Number, required: true },
+    firstRent:{ type: Number, default:0 },
     deposit: { type: Number, required: true },
-    status: { type: String, enum: ['active', 'inactive'], default: 'active' },
+    depositStatus: { type: String, enum: ['Pending', 'Paid', 'ReturnPending', 'Returned'], default: 'Pending' },
+    status: { type: String, enum: ['active','rejected', 'inactive'], default: 'active' },
     rentCollection: [rentCollectionSchema],
-    advancePayment: { type: Number},
+    depositCollection:[depositTransactionSchema]
   }, { timestamps: true });
   
   const roomSchema = new mongoose.Schema({

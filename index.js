@@ -20,7 +20,7 @@ import paymentRoutes from './routes/paymentRoutes.js'
 import recieptRoutes from './routes/recieptRoutes.js'
 import messageRoutes from './routes/messageRoute.js'
 import settingRoutes from './routes/settingRoutes.js'
-import { sendCustomMessage } from "./functions/createTemplate.js"
+
 
 const app = express();
 const PORT = 8000;
@@ -38,10 +38,7 @@ app.use(morgan('dev'))
 
 //database configcon
 connectDB();
-const mobile = '7560845014'; // Recipient's mobile number
-const message = `We kindly request you to complete the payment at your earliest convenience.`;
 
-// sendCustomMessage(mobile, message);
 // generateMonthlyCollections()
 // generateMonthlySalaries()
 // collectRent()

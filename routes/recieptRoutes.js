@@ -11,6 +11,15 @@ const router=express.Router()
 router.post('/createReciept/category', async (req, res) => {
    try {
     const { name, description} = req.body;
+    if(name){
+        const existingCategory = await recieptCategoryModel.findOne({ name });
+        if(existingCategory){
+            return res.status(400).json({
+                success: false,
+                message: 'Reciept Category with the same name already exists.'
+            });
+        }
+    }
     const category = new recieptCategoryModel({ name, description});
     await category.save();
     return res.status(201).json({
@@ -19,6 +28,7 @@ router.post('/createReciept/category', async (req, res) => {
         category
     });
    } catch (error) {
+    console.log(error)
     return res.status(500).json({
         success: false,
         message: 'Failed to create reciept category.',

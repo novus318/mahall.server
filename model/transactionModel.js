@@ -7,6 +7,8 @@ const transactionSchema = new mongoose.Schema({
     description: String,
     accountId: { type: mongoose.Schema.Types.ObjectId, ref: 'bank', required: true },
     category: String, 
+    openingBalance: { type: Number, required: true },
+    closingBalance: { type: Number, required: true },
   },
   { timestamps: true });
 

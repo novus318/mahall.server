@@ -148,23 +148,29 @@ router.post('/inter-account-transfer', async (req, res) => {
     const { fromAccount, toAccount, amount } = req.body;
     const session = await mongoose.startSession();
     session.startTransaction();
+    const debitAccount = await BankModel.findById(fromAccount._id);
     try {
         const debitTransaction = new transactionModel({
             type: 'Debit',
             amount,
             accountId: fromAccount._id,
-            description: `Account tranfer to ${toAccount.name}`,
+            description: `Account Deposited to ${toAccount.name}`,
             category: 'Self-Transfer',
+            openingBalance:debitAccount.balance,
+            closingBalance:debitAccount.balance - amount
           });
           await debitTransaction.save({ session });
           await BankModel.findByIdAndUpdate(fromAccount._id, { $inc: { balance: -amount } }, { session });
-
+         
+          const creditAccount = await BankModel.findById(toAccount._id);
           const creditTransaction = new transactionModel({
             type: 'Credit',
             amount,
             accountId: toAccount._id,
-            description:`Amount transfer from ${fromAccount.name} to ${toAccount.name}`,
+            description:`Amount Deposit from ${fromAccount.name} to ${toAccount.name}`,
             category: 'Self-Transfer',
+            openingBalance: creditAccount.balance,
+            closingBalance: creditAccount.balance+debitTransaction.amount,
           });
           await creditTransaction.save({ session });
 

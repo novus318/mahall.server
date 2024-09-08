@@ -11,6 +11,16 @@ const router=express.Router()
 router.post('/createPayment/category', async (req, res) => {
    try {
     const { name, description} = req.body;
+    if(name){
+        const existingCategory = await paymentCategoryModel.findOne({ name });
+        if(existingCategory){
+            return res.status(400).json({
+                success: false,
+                message: 'Payment Category with the same name already exists.'
+            });
+        }
+    }
+
     const category = new paymentCategoryModel({ name, description});
     await category.save();
     return res.status(201).json({

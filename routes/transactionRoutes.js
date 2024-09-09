@@ -95,6 +95,7 @@ router.get('/get/self-transfer', async (req, res) => {
         accountId: transaction.accountId._id,
         accountName: transaction.accountId.name,
         amount: transaction.amount,
+        Balance:transaction.closingBalance,
       }));
   
       // Convert maps to arrays

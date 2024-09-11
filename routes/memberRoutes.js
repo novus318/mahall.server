@@ -9,7 +9,34 @@ const router=express.Router()
 router.post('/create', async (req, res) => {
     try {
       const { newMember,selectedRelation,houseId } = req.body;
-      // Create a new member instance
+
+
+      if (!newMember.name || newMember.name.trim() === '') {
+        return res.status(400).send({ success: false, message: 'Member name is required' });
+    }
+    if (!newMember.status || newMember.status.trim() === '') {
+        return res.status(400).send({ success: false, message: 'Member Occupation or status is required' });
+    }
+    if (newMember.DOB && isNaN(Date.parse(newMember.DOB))) {
+        return res.status(400).send({ success: false, message: 'Invalid date of birth' });
+    }
+    if (newMember.gender && !['male', 'female'].includes(newMember.gender)) {
+        return res.status(400).send({ success: false, message: 'Invalid gender' });
+    }
+    if (!['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].includes(newMember.bloodGroup)) {
+        return res.status(400).send({ success: false, message: 'Invalid blood group' });
+    }
+    if (!newMember.maritalStatus) {
+        return res.status(400).send({ success: false, message: 'Marital status is required' });
+    }
+    if (!newMember.education || !newMember.education.level || 
+        !['Below 10th', 'SSLC', 'Plus Two', 'Diploma', 'Bachelors', 'Masters', 'PhD'].includes(newMember.education.level)) {
+        return res.status(400).send({ success: false, message: 'Invalid education level' });
+    }
+    if (!newMember.place || newMember.place.trim() === '') {
+      return res.status(400).send({ success: false, message: 'Member place of residence is required' });
+    }
+
       const member = new memberModel({
         name:newMember.name,
         status:newMember.status,

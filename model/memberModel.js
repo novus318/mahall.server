@@ -9,9 +9,6 @@ const educationSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    required: function() {
-      return ['Below 10th', 'Diploma', 'Bachelors', 'Masters'].includes(this.level);
-    }
   }
 });
 
@@ -19,19 +16,12 @@ const educationSchema = new mongoose.Schema({
 const madrassaSchema = new mongoose.Schema({
   studying: {
     type: Boolean, // Whether the person is currently studying
-    required: true
   },
   currentClass: {
     type: String,
-    required: function() {
-      return this.studying; // Required if the person is currently studying
-    }
   },
   lastClassStudied: {
     type: String,
-    required: function() {
-      return !this.studying; // Required if the person is not studying
-    }
   }
 });
 
@@ -43,21 +33,17 @@ const memberSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    required: true
   },
   DOB: {
     type: Date,
-    required: true
   },
   maritalStatus: {
     type: String,
-    required: true
   },
   education: educationSchema, // Use the education subdocument schema here
   madrassa: madrassaSchema, // Use the madrassa subdocument schema here
   gender: {
     type: String,
-    required: true
   },
   mobile: {
     type: String,
@@ -81,29 +67,22 @@ const memberSchema = new mongoose.Schema({
   },
   place: {
     type: String,
-    enum: ['UAE', 'Malaysia', 'Kuwait', 'Singapore', 'Kerala', 'Outside Kerala'], // Possible places
-    required: true // Ensures that the place field is always set
   },
   idCards: {
     aadhaar: {
       type: Boolean,
-      required: true
     },
     drivingLicense: {
       type: Boolean,
-      required: true
     },
     voterID: {
       type: Boolean,
-      required: true
     },
     panCard: {
       type: Boolean,
-      required: true
     },
     HealthCard:{
       type: Boolean,
-      required: true
     }
   },
   bloodGroup: {

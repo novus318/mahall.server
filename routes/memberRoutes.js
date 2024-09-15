@@ -212,12 +212,15 @@ router.post('/create', async (req, res) => {
         ? { name: { $regex: search, $options: 'i' } } // Case-insensitive search
         : {};
   
-      const members = await memberModel.find(query, { name: 1, _id: 1 });
+      const members = await memberModel.find(query, { name: 1, _id: 1 })
+        .populate('house', 'number'); // Populate the house field and only include the house number
+  
       res.status(200).json({ success: true, members });
     } catch (error) {
-      res.status(500).json({ success: false, message: 'Error fetching member names and IDs', error: error.message });
+      res.status(500).json({ success: false, message: 'Error fetching member names, IDs, and house numbers', error: error.message });
     }
   });
+  
   
 
 

@@ -5,6 +5,7 @@ import houseModel from "../model/houseModel.js";
 import kudiCollection from "../model/kudiCollection.js";
 import receiptNumberModel from "../model/recieptNumberModel.js";
 import { NextReceiptNumber } from "./recieptNumber.js";
+import recieptNumberModel from "../model/recieptNumberModel.js";
 
 dotenv.config({ path: './.env' })
 const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL;
@@ -30,9 +31,10 @@ export const generateMonthlyCollections = async () => {
         lastMonth.setMonth(lastMonth.getMonth() - 1);
         const lastMonthName = lastMonth.toLocaleString('default', { month: 'long' });
         const houses = await houseModel.find().populate('familyHead');
-const lastRecieptNumber=await getLastCollectionReceiptNumber()
-const newRecieptNumber = await NextReceiptNumber(lastRecieptNumber);
+
         for (const house of houses) {
+            const lastRecieptNumber=await getLastCollectionReceiptNumber()
+const newRecieptNumber = await NextReceiptNumber(lastRecieptNumber);
             const collection = new kudiCollection({
                 amount: house.collectionAmount,
                 date: new Date(),
@@ -46,13 +48,17 @@ const newRecieptNumber = await NextReceiptNumber(lastRecieptNumber);
                 status: 'Unpaid',
                 receiptNumber:newRecieptNumber
             });
-
+            const UptdateReceiptNumber = await recieptNumberModel.findOne();
+            if (UptdateReceiptNumber) {
+                UptdateReceiptNumber.collectionReceiptNumber.lastNumber = newRecieptNumber;
+                await UptdateReceiptNumber.save();
+            }
             await collection.save();
-            await sendWhatsAppMessage(
-                house,
-                lastMonthName
-            );
-            // Wait for 30 seconds before creating the next collection
+            // await sendWhatsAppMessage(
+            //     house,
+            //     lastMonthName
+            // );
+          
             await new Promise(resolve => setTimeout(resolve, 10000));
         }
 

@@ -2,7 +2,7 @@ import express  from "express";
 import memberModel from "../model/memberModel.js";
 import recieptCategoryModel from "../model/recieptCategoryModel.js";
 import recieptModel from "../model/recieptModel.js";
-import { creditAccount } from "../functions/transaction.js";
+import { creditAccount, deleteCreditTransaction, updateCreditTransaction } from "../functions/transaction.js";
 import recieptNumberModel from "../model/recieptNumberModel.js";
 import { NextReceiptNumber } from "../functions/recieptNumber.js";
 const router=express.Router()
@@ -106,6 +106,7 @@ router.post('/create-reciept', async (req, res) => {
             return res.status(500).json({ success: false, message: 'Error creating payment. Transaction failed.' });
         } else {
             newReciept.status = 'Completed';
+            newReciept.transactionId = transaction._id;
             await newReciept.save();
             const UptdateReceiptNumber = await recieptNumberModel.findOne();
             if (UptdateReceiptNumber) {
@@ -147,7 +148,17 @@ router.get('/get-reciept/number', async (req, res) => {
     }
 });
 
-
+router.get('/get-reciept/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const reciept = await recieptModel.findById(id).populate('categoryId memberId otherRecipient');
+        if (!reciept) return res.status(404).json({ success: false, message: 'Reciept not found.' });
+        res.status(200).json({ success: true, reciept });
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
 router.get('/get-reciepts', async (req, res) => {
     try {
         const reciepts = await recieptModel.find({}).sort({
@@ -160,6 +171,62 @@ router.get('/get-reciepts', async (req, res) => {
     }
 })
 
+router.put('/update-reciept/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updatedData = req.body;
+        const reciept = await recieptModel.findById(id);
+        if (!reciept) return res.status(404).json({ success: false, message: 'Reciept not found.' });
+        const { amount, date,description, accountId, categoryId, recieptType, memberId, otherRecipient } = updatedData;
+      
+        reciept.amount = amount,
+        reciept.date = date || Date.now(),
+        reciept.description = description,
+        reciept.accountId = accountId,
+        reciept.categoryId = categoryId._id,
+        reciept.recieptType = recieptType,
+        reciept.memberId = memberId || null,
+        reciept.otherRecipient = memberId? null : otherRecipient
 
+        const category = categoryId.name;
+        await updateCreditTransaction(reciept.transactionId,amount,description,category)
+        if(!updateCreditTransaction){
+            res.status(500).json({
+                success: false,
+                message: 'Error updating payment. Transaction failed.',
+                error: updateCreditTransaction,
+            });
+        }
+        await reciept.save();
+        res.status(200).json({ success: true, message: 'Reciept updated successfully.', reciept });
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+
+router.put('/reject-reciept/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const reciept = await recieptModel.findById(id);
+        if (!reciept) return res.status(404).json({ success: false, message: 'Reciept not found.' });
+
+        reciept.status= 'Rejected'
+        await deleteCreditTransaction(reciept.transactionId);
+        if(!deleteCreditTransaction){
+            res.status(500).json({
+                success: false,
+                message: 'Error in rejecting. try later.',
+                error: deleteCreditTransaction,
+            });
+        }
+        await reciept.save();
+        res.status(200).json({ success: true, message: 'Reciept rejection successfully.' });
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
 
 export default router

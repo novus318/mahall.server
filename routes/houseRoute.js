@@ -268,19 +268,22 @@ router.get('/kudi-contribution/:houseId', async (req, res) => {
         const memberIds = members.map(member => member._id);
 
         // Step 2: Retrieve all receipts for those members
-        const receipts = await receiptModel.find({ memberId: { $in: memberIds } })
-            .populate('accountId', 'name')
-            .populate('categoryId', 'name')
-            .populate('memberId', 'name')
-            .sort({ createdAt: -1 });
+        const receipts = await receiptModel.find({ 
+            memberId: { $in: memberIds }, 
+            status: 'Completed'  // Only retrieve completed receipts
+        })
+        .populate('accountId', 'name')
+        .populate('categoryId', 'name')
+        .populate('memberId', 'name')
+        .sort({ createdAt: -1 });
 
-        const totalContributions = receipts.reduce((total, receipt) => total + receipt.amount, 0);
+    const totalContributions = receipts.reduce((total, receipt) => total + receipt.amount, 0);
 
-        res.status(200).json({
-            success: true,
-            totalContributions,
-            receipts
-        });
+    res.status(200).json({
+        success: true,
+        totalContributions,
+        receipts
+    });
 
     } catch (error) {
         console.error('Error fetching kudi contributions:', error);

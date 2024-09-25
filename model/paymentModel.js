@@ -32,7 +32,7 @@ const paymentSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['Pending', 'Completed',],
+        enum: ['Pending', 'Completed','Rejected',],
         default: 'Pending',
         required: true
     },
@@ -41,6 +41,10 @@ const paymentSchema = new mongoose.Schema({
         enum: ['Online', 'Cash'], // Type of payment: Online or Cash
         required: true // Payment type is required
     },
+    transactionId:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'transaction', // Reference to the transaction associated with the payment (if applicable)
+},
     memberId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'member', // Reference to the member receiving the payment (if applicable)

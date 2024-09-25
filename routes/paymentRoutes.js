@@ -1,5 +1,5 @@
 import express  from "express";
-import { debitAccount } from "../functions/transaction.js";
+import { debitAccount, deleteDebitTransaction, updateDebitTransaction } from "../functions/transaction.js";
 import paymentCategoryModel from "../model/paymentCategoryModel.js";
 import paymentModel from "../model/paymentModel.js";
 import memberModel from "../model/memberModel.js";
@@ -108,6 +108,7 @@ router.post('/create-payment', async (req, res) => {
             return res.status(500).json({ success: false, message: 'Error creating payment. Transaction failed.' });
         } else {
             newPayment.status = 'Completed';
+            newPayment.transactionId = transaction._id
             await newPayment.save();
             const UptdateReceiptNumber = await recieptNumberModel.findOne();
             if (UptdateReceiptNumber) {
@@ -132,6 +133,88 @@ router.post('/create-payment', async (req, res) => {
     }
 });
 
+router.put('/edit-payment/:paymentId', async (req, res) => {
+    try {
+        const { paymentId } = req.params;
+        const updatedData = req.body;
+
+        // Edit the payment
+        const existingPayment = await paymentModel.findById(paymentId);
+    if (!existingPayment) throw new Error('Payment not found');
+
+    const { items, date, accountId, categoryId, paymentType, memberId, otherRecipient } = updatedData;
+    const newTotal = items.reduce((acc, item) => acc + Number(item.amount||0), 0);
+    if (newTotal <= 0) throw new Error('Invalid total amount');
+
+    existingPayment.items = items;
+    existingPayment.total = newTotal;
+    existingPayment.date = date || Date.now();
+    existingPayment.accountId = accountId;
+    existingPayment.categoryId = categoryId._id;
+    existingPayment.paymentType = paymentType;
+    existingPayment.memberId = memberId || null;
+    existingPayment.otherRecipient = memberId ? null : otherRecipient;
+
+
+    // Save the updated payment
+
+    const category = categoryId.name;
+    const description = `Updated payment for ${category} by ${paymentType}`;
+    await updateDebitTransaction(existingPayment.transactionId, newTotal, description, category);
+if(!updateDebitTransaction){
+    res.status(500).json({
+        success: false,
+        message: 'Error updating payment. Transaction failed.',
+        error: updateDebitTransaction,
+    });
+}
+await existingPayment.save();
+        res.status(200).json({
+            success: true,
+            message: 'Payment and transaction updated successfully.',
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred while updating the payment.',
+            error: error.message,
+        });
+    }
+});
+router.put('/reject-payment/:paymentId', async (req, res) => {
+    try {
+        const { paymentId } = req.params;
+
+        // Edit the payment
+        const existingPayment = await paymentModel.findById(paymentId);
+    if (!existingPayment) throw new Error('Payment not found');
+
+
+    existingPayment.status = 'Rejected';
+
+
+    await deleteDebitTransaction(existingPayment.transactionId);
+if(!deleteDebitTransaction){
+    res.status(500).json({
+        success: false,
+        message: 'Error in rejecting. try later.',
+        error: deleteDebitTransaction,
+    });
+}
+await existingPayment.save();
+        res.status(200).json({
+            success: true,
+            message: 'Payment and rejection updated successfully.',
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred while updating the payment.',
+            error: error.message,
+        });
+    }
+});
 
 router.get('/get-payment/number', async (req, res) => {
     try {
@@ -151,6 +234,22 @@ router.get('/get-payment/number', async (req, res) => {
     }
 });
 
+
+router.get('/get-payment/:paymentId', async (req, res) => {
+    try {
+        const { paymentId } = req.params;
+        const payment = await paymentModel.findById(paymentId).populate('categoryId memberId otherRecipient');
+        if (!payment) throw new Error('Payment not found');
+        res.status(200).json({ success: true, payment });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred while retrieving the payment.',
+            error: error.message,
+        });
+    }
+});
 router.get('/get/payments',async(req,res)=>{
     try {
         const payments = await paymentModel.find({}).sort({

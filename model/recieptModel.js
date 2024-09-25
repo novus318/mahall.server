@@ -26,7 +26,7 @@ const receiptSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['Pending', 'Completed',],
+        enum: ['Pending', 'Completed','Rejected',],
         default: 'Pending',
         required: true
     },
@@ -50,6 +50,10 @@ const receiptSchema = new mongoose.Schema({
             required: function() { return !this.memberId; } // Required if memberId is not provided
         }
     },
+    transactionId:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'transaction',
+},
     receiptNumber: {
         type: String,
         unique: true // Ensure receipt number is unique

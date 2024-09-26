@@ -54,10 +54,10 @@ const newRecieptNumber = await NextReceiptNumber(lastRecieptNumber);
                 await UptdateReceiptNumber.save();
             }
             await collection.save();
-            // await sendWhatsAppMessage(
-            //     house,
-            //     lastMonthName
-            // );
+            await sendWhatsAppMessage(
+                house,
+                lastMonthName
+            );
           
             await new Promise(resolve => setTimeout(resolve, 10000));
         }

@@ -71,7 +71,7 @@ export const collectRent = async () => {
           activeContract.rentCollection.push(rentCollection);
 
           // Notify tenant
-          // await sendWhatsapp(rentCollection, activeContract.tenant,room,building);
+          await sendWhatsapp(rentCollection, activeContract.tenant,room,building);
 
           // Add a 2-second delay between each rent collection
           await delay(2000);

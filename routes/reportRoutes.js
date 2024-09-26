@@ -6,12 +6,15 @@ import memberModel from "../model/memberModel.js";
 import houseModel from "../model/houseModel.js";
 import kudiCollection from "../model/kudiCollection.js";
 import buildingModel from "../model/buildingModel.js";
+import staffModel from "../model/staffModel.js";
+import salaryModel from "../model/salaryModel.js";
 
 const router=express.Router()
 
 router.get('/dashboard', async (req, res) => {
     const assets = await BankModel.find();
     const members = await memberModel.find().countDocuments();
+    const staffs = await staffModel.find().countDocuments();
     const totalBalance = assets.reduce((sum, asset) => sum + asset.balance, 0);
     const data = [
         { title: "Tuition Fees", link: 'Tution'},
@@ -20,7 +23,7 @@ router.get('/dashboard', async (req, res) => {
         { title: "Receipts",  link: 'Reciepts'},
         { title: "Accounts", value: `₹${totalBalance}`, link: 'Accounts'},
         { title: "Members", value: members ,link: 'members'},
-        { title: "Staff",  value: "98",link: 'staff'},
+        { title: "Staff",  value: staffs,link: 'staff'},
       ]
     res.send({
         success:true,
@@ -204,6 +207,38 @@ router.get('/rent-collections/byDate', async (req, res) => {
     }
   })
   
+  router.get('/get/salary/byDate', async (req, res) => {
+    try {
+      // Get startDate and endDate from query parameters
+      const { startDate, endDate } = req.query;
+
+      // If no dates are provided, return an error
+      if (!startDate || !endDate) {
+          return res.status(400).json({ success: false, message: 'Please provide both startDate and endDate' });
+      }
+
+      // Convert the dates to JavaScript Date objects
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      // Set the end date to include the entire day
+      end.setHours(23, 59, 59, 999);
+      const payslips = await salaryModel.find({createdAt: { $gte: start, $lte: end }}).sort({
+        createdAt: -1,
+    }).populate('staffId');
+
+      // If no salary found
+      if (!payslips || payslips.length === 0) {
+          return res.status(404).json({ success: false, message: 'No salary found for the given date range' });
+      }
+
+      // Return the salary
+      res.status(200).json({ success: true, payslips });
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ message: 'Server error', error: error.message });
+    }
+    });
 
 
 export default router;

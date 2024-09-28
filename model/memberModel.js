@@ -14,13 +14,12 @@ const educationSchema = new mongoose.Schema({
 
 // Define a subdocument schema for Madrassa
 const madrassaSchema = new mongoose.Schema({
-  studying: {
-    type: Boolean, // Whether the person is currently studying
-  },
-  currentClass: {
+  level: {
     type: String,
+    enum: ['Not studied','Below 5th', 'Above 5th', 'Above 10th'],
+    required: true
   },
-  lastClassStudied: {
+  description: {
     type: String,
   }
 });
@@ -40,8 +39,8 @@ const memberSchema = new mongoose.Schema({
   maritalStatus: {
     type: String,
   },
-  education: educationSchema, // Use the education subdocument schema here
-  madrassa: madrassaSchema, // Use the madrassa subdocument schema here
+  education: educationSchema, 
+  madrassa: madrassaSchema, 
   gender: {
     type: String,
   },
@@ -54,7 +53,7 @@ const memberSchema = new mongoose.Schema({
   relation: {
     member: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'member', // Reference to another member
+      ref: 'member',
     },
     relationType: {
       type: String,

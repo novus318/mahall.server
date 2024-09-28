@@ -33,6 +33,10 @@ router.post('/create', async (req, res) => {
         !['Below 10th', 'SSLC', 'Plus Two', 'Diploma', 'Bachelors', 'Masters', 'PhD'].includes(newMember.education.level)) {
         return res.status(400).send({ success: false, message: 'Invalid education level' });
     }
+    if (!newMember.madrassa || !newMember.madrassa.level || 
+      !['Not studied','Below 5th', 'Above 5th', 'Above 10th'].includes(newMember.madrassa.level)) {
+      return res.status(400).send({ success: false, message: 'Invalid madrassa level' });
+  }
     if (!newMember.place || newMember.place.trim() === '') {
       return res.status(400).send({ success: false, message: 'Member place of residence is required' });
     }
@@ -54,7 +58,7 @@ router.post('/create', async (req, res) => {
       });
       if (selectedRelation && mongoose.Types.ObjectId.isValid(selectedRelation.memberId)) {
         member.relation.member = selectedRelation.memberId;
-        member.relation.relationType = selectedRelation.relation || ''; // Default to empty string if relation is not provided
+        member.relation.relationType = selectedRelation.relation || '';
       }
   
   
@@ -103,33 +107,40 @@ router.post('/create', async (req, res) => {
   
   router.put('/edit-member', async (req, res) => {
     try {
-      const { newMember,selectedRelation,houseId,memberId } = req.body;
-  console.log(selectedRelation)
-      // Create a new member instance
-      const updatedmember = await memberModel.findByIdAndUpdate(memberId,{
-        name:newMember.name,
-        status:newMember.status,
-        DOB:newMember.DOB,
-        maritalStatus:newMember.maritalStatus,
-        education:newMember.education,
-        madrassa:newMember.madrassa,
-        gender:newMember.gender,
-        mobile:newMember.mobile,
-        whatsappNumber:newMember.whatsappNumber,
-        place:newMember.place,
-        idCards:newMember.idCards,
-        bloodGroup:newMember.bloodGroup,
-        house:houseId,
-      });
+      const { newMember, selectedRelation, houseId, memberId } = req.body;
+  
+      // Create a new member instance and return the updated document
+      const updatedmember = await memberModel.findByIdAndUpdate(
+        memberId,
+        {
+          name: newMember.name,
+          status: newMember.status,
+          DOB: newMember.DOB,
+          maritalStatus: newMember.maritalStatus,
+          education: newMember.education,
+          madrassa: newMember.madrassa,
+          gender: newMember.gender,
+          mobile: newMember.mobile,
+          whatsappNumber: newMember.whatsappNumber,
+          place: newMember.place,
+          idCards: newMember.idCards,
+          bloodGroup: newMember.bloodGroup,
+          house: houseId,
+        },
+        { new: true } // This option returns the updated document
+      );
+  
+     console.log(selectedRelation)
       if (selectedRelation.memberId && mongoose.Types.ObjectId.isValid(selectedRelation.memberId)) {
-        updatedmember.relation.member = selectedRelation.memberId;
-      }
-      if (selectedRelation.relation) {
-        updatedmember.relation.relationType = selectedRelation.relation || ''; 
+        updatedmember.relation = {
+          member: selectedRelation.memberId,
+          relationType: selectedRelation.relation || '',
+        };
+      } if (selectedRelation.memberId === 'No Relation') {
+        updatedmember.relation = undefined;
       }
   
-  
-      // Save the new member to the database
+      // Save the updated member to the database
       const savedMember = await updatedmember.save();
   
       // Send a success response with the saved member
@@ -143,6 +154,7 @@ router.post('/create', async (req, res) => {
       res.status(500).json({ message: 'An error occurred while creating the member.', error: error.message });
     }
   });
+  
 
   router.get('/all-members/:pid', async (req, res) => {
     const { pid } = req.params;

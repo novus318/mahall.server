@@ -53,6 +53,10 @@ router.post('/create-house', async (req, res) => {
         !['Below 10th', 'SSLC', 'Plus Two', 'Diploma', 'Bachelors', 'Masters', 'PhD'].includes(newMember.education.level)) {
         return res.status(400).send({ success: false, message: 'Invalid education level' });
     }
+    if (!newMember.madrassa || !newMember.madrassa.level || 
+        !['Not studied','Below 5th', 'Above 5th', 'Above 10th'].includes(newMember.madrassa.level)) {
+        return res.status(400).send({ success: false, message: 'Invalid madrassa level' });
+    }
     if (!newMember.place || newMember.place.trim() === '') {
         return res.status(400).send({ success: false, message: 'Member place of residence is required' });
       }

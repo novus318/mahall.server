@@ -145,46 +145,70 @@ router.get('/get', async (req, res) => {
 })
 
 router.post('/inter-account-transfer', async (req, res) => {
-    const { fromAccount, toAccount, amount } = req.body;
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    const debitAccount = await BankModel.findById(fromAccount._id);
-    try {
-        const debitTransaction = new transactionModel({
-            type: 'Debit',
-            amount,
-            accountId: fromAccount._id,
-            description: `Account Deposited to ${toAccount.name}`,
-            category: 'Self-Transfer',
-            openingBalance:debitAccount.balance,
-            closingBalance:debitAccount.balance - amount
-          });
-          await debitTransaction.save({ session });
-          await BankModel.findByIdAndUpdate(fromAccount._id, { $inc: { balance: -amount } }, { session });
-         
-          const creditAccount = await BankModel.findById(toAccount._id);
-          const creditTransaction = new transactionModel({
-            type: 'Credit',
-            amount,
-            accountId: toAccount._id,
-            description:`Amount Deposit from ${fromAccount.name} to ${toAccount.name}`,
-            category: 'Self-Transfer',
-            openingBalance: creditAccount.balance,
-            closingBalance: creditAccount.balance+debitTransaction.amount,
-          });
-          await creditTransaction.save({ session });
+  const { fromAccount, toAccount, amount } = req.body;
 
-          await BankModel.findByIdAndUpdate(toAccount._id, { $inc: { balance: +amount } }, { session });
+  // Ensure fromAccount and toAccount are not the same
+  if (fromAccount._id === toAccount._id) {
+      return res.status(400).send({ success: false, message: 'From and to accounts cannot be the same.' });
+  }
 
-          await session.commitTransaction();
+  const session = await BankModel.startSession(); // Start a new session
+
+  try {
+      session.startTransaction(); // Begin the transaction
+
+      const debitAccount = await BankModel.findById(fromAccount._id).session(session);
+
+      if (debitAccount.balance < amount) {
+          // Abort transaction if insufficient funds
+          await session.abortTransaction();
           session.endSession();
-          res.status(200).send({ success: true, message: 'Transfer successful' });
-}catch{
-    await session.abortTransaction();
-    session.endSession();
-    res.status(500).send({ success: false, message: 'Transfer failed' });
-}
-})
+          return res.status(400).send({ success: false, message: 'Insufficient funds.' });
+      }
+
+      const debitTransaction = new transactionModel({
+          type: 'Debit',
+          amount,
+          accountId: fromAccount._id,
+          description: `Account Deposited to ${toAccount.name}`,
+          category: 'Self-Transfer',
+          openingBalance: debitAccount.balance,
+          closingBalance: debitAccount.balance - amount
+      });
+      await debitTransaction.save({ session });
+
+      // Debit the fromAccount
+      await BankModel.findByIdAndUpdate(fromAccount._id, { $inc: { balance: -amount } }, { session });
+
+      // Fetch the toAccount and create a credit transaction
+      const creditAccount = await BankModel.findById(toAccount._id).session(session);
+      const creditTransaction = new transactionModel({
+          type: 'Credit',
+          amount,
+          accountId: toAccount._id,
+          description: `Amount Deposit from ${fromAccount.name} to ${toAccount.name}`,
+          category: 'Self-Transfer',
+          openingBalance: creditAccount.balance,
+          closingBalance: creditAccount.balance + amount,
+      });
+      await creditTransaction.save({ session });
+
+      // Credit the toAccount
+      await BankModel.findByIdAndUpdate(toAccount._id, { $inc: { balance: +amount } }, { session });
+
+      // Commit the transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      res.status(200).send({ success: true, message: 'Transfer successful' });
+  } catch (error) {
+      // Rollback transaction in case of any error
+      await session.abortTransaction();
+      session.endSession();
+      res.status(500).send({ success: false, message: 'Transfer failed', error: error.message });
+  }
+});
+
 
 
 

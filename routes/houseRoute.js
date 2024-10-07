@@ -187,7 +187,7 @@ router.get('/get/paid/collections', async (req, res) => {
 
         const paidCollections = await kudiCollection.find({ status: 'Paid' }).sort({
             createdAt: -1,
-        }).populate('memberId houseId')
+        }).populate('memberId houseId').limit(50)
         res.status(200).send({ success: true, houses: paidCollections });
     } catch (error) {
         res.status(500).send({
@@ -197,6 +197,32 @@ router.get('/get/paid/collections', async (req, res) => {
     }
 });
 
+router.put('/reject/collection/:id', async (req, res) => {
+    try {
+        const {rejectionReason} = req.body;
+        const collectionId = req.params.id;
+
+        // Find the kudiCollection by ID and update it
+        const updatedCollection = await kudiCollection.findByIdAndUpdate(
+            collectionId,
+            {
+                status: 'Rejected',
+                rejectionReason,
+                PaymentDate: new Date(),
+            },
+            { new: true }
+        ).populate('memberId houseId');
+
+        if (!updatedCollection) {
+            return res.status(404).send({ success: false, message: 'Kudi collection not found' });
+        }
+     
+        res.status(200).send({ success: true, message: 'Kudi collection rejected successfully', data: updatedCollection });
+    } catch (error) {
+        console.error('Error rejecting kudi collection:', error);
+        res.status(500).send({ success: false, message: 'Server Error' });
+    }
+});
 router.put('/update/collection/:id', async (req, res) => {
     try {
         const { paymentType, targetAccount } = req.body;

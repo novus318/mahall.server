@@ -34,7 +34,7 @@ export const generateMonthlySalaries = async () => {
             if (staff.firstSalary !== 0) {
                 salaryAmount = staff.firstSalary;
 
-                // Update firstSalary to 0 after the first salary is generated
+                
                 staff.firstSalary = 0;
                 await staff.save();
             } else {

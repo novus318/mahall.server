@@ -3,7 +3,11 @@ import messageModel from "../model/messageModel.js";
 const router=express.Router()
 
 
-
+const downloadMedia = async (mediaId) => {
+  const mediaUrl = `https://your_media_url/${mediaId}`; // WhatsApp Media URL
+  const response = await axios.get(mediaUrl, { responseType: 'arraybuffer' });
+  return Buffer.from(response.data, 'binary');  // Convert to blob
+};
 router.post('/webhook', async (req, res) => {
   try {
       const { entry } = req.body;
@@ -46,34 +50,32 @@ router.post('/webhook', async (req, res) => {
                           });
                           break;
 
-                      case 'image':
-                          // Handle image message
-                          const imageId = message.image.id;
-                          const mediaUrl = `https://your_media_url/${imageId}`; // Generate the URL to download the media
-                          newMessage = new messageModel({
-                              senderName,
-                              senderNumber,
-                              messageContent: message.image.caption,
-                              messageType: 'image',
-                              mediaUrl,
-                              mediaType: message.image.mime_type,
-                              timestamp
-                          });
-                          break;
+                          case 'image':
+                            // Handle image message, download and save as blob
+                            const imageBlob = await downloadMedia(message.image.id);
+                            newMessage = new messageModel({
+                                senderName,
+                                senderNumber,
+                                messageContent: message.image.caption,
+                                messageType: 'image',
+                                mediaBlob: imageBlob,
+                                mediaType: message.image.mime_type,
+                                timestamp
+                            });
+                            break;
 
-                      case 'sticker':
-                          // Handle sticker message
-                          const stickerId = message.sticker.id;
-                          const stickerUrl = `https://your_media_url/${stickerId}`; // Generate the URL to download the sticker
-                          newMessage = new messageModel({
-                              senderName,
-                              senderNumber,
-                              messageType: 'sticker',
-                              mediaUrl: stickerUrl,
-                              mediaType: message.sticker.mime_type,
-                              timestamp
-                          });
-                          break;
+                        case 'sticker':
+                            // Handle sticker message, download and save as blob
+                            const stickerBlob = await downloadMedia(message.sticker.id);
+                            newMessage = new messageModel({
+                                senderName,
+                                senderNumber,
+                                messageType: 'sticker',
+                                mediaBlob: stickerBlob,
+                                mediaType: message.sticker.mime_type,
+                                timestamp
+                            });
+                            break;
 
                       // Handle other media types similarly (audio, video, etc.)
                       default:
@@ -92,7 +94,7 @@ router.post('/webhook', async (req, res) => {
 
       res.sendStatus(200); // Acknowledge the request
   } catch (error) {
-      console.error('Error processing message:', error);
+      console.error('Error processing message:', error,req.body.entry);
       res.status(500).send('Internal Server Error');
   }
 });

@@ -2,12 +2,21 @@ import mongoose from "mongoose";
 
 // Define the schema for a receipt category
 const messageSchema = new mongoose.Schema({
-    senderName: { type: String, },
-    senderNumber: { type: String, required: true },
-    messageContent: { type: String, required: true },
-    messageType: { type: String, required: true }, // text, image, etc.
-    time: { type: Date, default: Date.now }
-},{ timestamps: true });
+    senderName: String,
+    senderNumber: String,
+    messageContent: String, 
+    messageType: String,   
+    mediaUrl: String,       
+    mediaType: String,     
+    emoji: String,        
+    reactedToMessageId: String, 
+    timestamp: String, 
+    createdAt: {
+        type: Date,
+        default: Date.now
+    }
+});
+
 
 // Export the model
 export default mongoose.model('message', messageSchema);

@@ -15,35 +15,77 @@ router.post('/webhook', async (req, res) => {
 
               if (messageData && messageData.length > 0) {
                   const message = messageData[0];
-                  let messageContent = ''; // Placeholder for message content
-                  let fileUrl = ''; // Placeholder for file or audio URL
-                  let messageType = message.type; // Type of message (text, audio, document, etc.)
+                  let newMessage;
 
-                  // Ensure message type exists and process accordingly
-                  if (messageType === 'text' && message.text) {
-                      // If it's a text message
-                      messageContent = message.text.body;
-                  } else if ((messageType === 'image' || messageType === 'document' || messageType === 'audio') && message[messageType]) {
-                      // If it's an image, document, or audio message
-                      fileUrl = message[messageType].url;
-                      messageContent = `Received a ${messageType}. You can download it here: ${fileUrl}`;
-                  } else {
-                      // Handle unknown or unsupported message types
-                      console.log('Unsupported message type or missing data:', messageType);
-                      return res.status(400).send('Unsupported message type or missing data');
+                  // Common fields for all messages
+                  const senderName = changes[0].value.contacts[0].profile.name;
+                  const senderNumber = message.from;
+                  const timestamp = message.timestamp;
+
+                  switch (message.type) {
+                      case 'text':
+                          // Handle text message
+                          newMessage = new messageModel({
+                              senderName,
+                              senderNumber,
+                              messageContent: message.text.body,
+                              messageType: 'text',
+                              timestamp
+                          });
+                          break;
+
+                      case 'reaction':
+                          // Handle reaction message
+                          newMessage = new messageModel({
+                              senderName,
+                              senderNumber,
+                              emoji: message.reaction.emoji,
+                              messageType: 'reaction',
+                              reactedToMessageId: message.reaction.messsage_id,
+                              timestamp
+                          });
+                          break;
+
+                      case 'image':
+                          // Handle image message
+                          const imageId = message.image.id;
+                          const mediaUrl = `https://your_media_url/${imageId}`; // Generate the URL to download the media
+                          newMessage = new messageModel({
+                              senderName,
+                              senderNumber,
+                              messageContent: message.image.caption,
+                              messageType: 'image',
+                              mediaUrl,
+                              mediaType: message.image.mime_type,
+                              timestamp
+                          });
+                          break;
+
+                      case 'sticker':
+                          // Handle sticker message
+                          const stickerId = message.sticker.id;
+                          const stickerUrl = `https://your_media_url/${stickerId}`; // Generate the URL to download the sticker
+                          newMessage = new messageModel({
+                              senderName,
+                              senderNumber,
+                              messageType: 'sticker',
+                              mediaUrl: stickerUrl,
+                              mediaType: message.sticker.mime_type,
+                              timestamp
+                          });
+                          break;
+
+                      // Handle other media types similarly (audio, video, etc.)
+                      default:
+                          console.log(`Unknown message type: ${message.type}`);
+                          break;
                   }
 
                   // Save the message to MongoDB
-                  const newMessage = new messageModel({
-                      senderName: changes[0].value.contacts[0].profile.name,
-                      senderNumber: message.from,
-                      messageContent: messageContent,
-                      messageType: messageType,
-                  });
-
-                  await newMessage.save();
-
-                  console.log('Message saved:', newMessage);
+                  if (newMessage) {
+                      await newMessage.save();
+                      console.log('Message saved:', newMessage);
+                  }
               }
           }
       }
@@ -54,8 +96,6 @@ router.post('/webhook', async (req, res) => {
       res.status(500).send('Internal Server Error');
   }
 });
-
-
 
 
 router.get('/webhook', async (req, res) => {

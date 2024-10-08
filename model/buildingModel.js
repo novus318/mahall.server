@@ -8,15 +8,15 @@ const rentCollectionSchema = new mongoose.Schema({
       type: Date,
       default: Date.now
   },
+  onleave:{
+    days: { type: Number },
+    deductAmount: { type: Number } 
+  },
   accountId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'bank', 
 },
     paymentDate: { type: Date},
-    deductions: [{
-      name: { type: String},
-      amount: { type: Number}
-    }],
     paymentMethod: {
       type: String,
       enum: ['Cash', 'Online'], 
@@ -66,8 +66,8 @@ const tenantSchema = new mongoose.Schema({
     from: { type: Date, required: true },
     to: { type: Date, required: true },
     tenant: { type: tenantSchema, required: true },
+    shop:{type:String},
     rent: { type: Number, required: true },
-    firstRent:{ type: Number, default:0 },
     deposit: { type: Number, required: true },
     depositStatus: { type: String, enum: ['Pending', 'Paid', 'ReturnPending', 'Returned'], default: 'Pending' },
     status: { type: String, enum: ['active','rejected', 'inactive'], default: 'active' },

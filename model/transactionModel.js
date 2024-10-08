@@ -9,6 +9,7 @@ const transactionSchema = new mongoose.Schema({
     category: String, 
     openingBalance: { type: Number, required: true },
     closingBalance: { type: Number, required: true },
+    reference:{ type:String}
   },
   { timestamps: true });
 

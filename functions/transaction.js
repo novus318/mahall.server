@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import BankModel from "../model/BankModel.js";
 import transactionModel from "../model/transactionModel.js";
 
-export const debitAccount = async (accountId, amount, description, category) => {
+export const debitAccount = async (accountId, amount, description, category,reference) => {
   // Ensure amount is a number
   amount = Number(amount);
 
@@ -30,6 +30,7 @@ export const debitAccount = async (accountId, amount, description, category) => 
       type: 'Debit',
       amount,
       description,
+      reference,
       accountId,
       category,
       openingBalance,
@@ -51,7 +52,7 @@ export const debitAccount = async (accountId, amount, description, category) => 
   }
 };
 
-export const creditAccount = async (accountId, amount, description, category) => {
+export const creditAccount = async (accountId, amount, description, category,reference) => {
   // Ensure amount is a number
   amount = Number(amount);
 
@@ -77,6 +78,7 @@ export const creditAccount = async (accountId, amount, description, category) =>
       type: 'Credit',
       amount,
       description,
+      reference,
       accountId,
       category,
       openingBalance,

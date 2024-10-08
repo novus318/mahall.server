@@ -10,6 +10,10 @@ const staffSchema = new mongoose.Schema({
   department: { type: String, required: true },
   position: { type: String, required: true },
   salary: { type: Number, required: true },
+  advancePayment:{
+    type: Number,
+    default: 0,
+  },
   joinDate: { type: Date, default: Date.now },
   contactInfo: {
     phone: { type: String, required: true },

@@ -40,7 +40,7 @@ app.use(morgan('dev'))
 connectDB();
 
  //generateMonthlyCollections()
-// generateMonthlySalaries()
+//generateMonthlySalaries()
 // collectRent()
 
 cron.schedule('0 10 1 * *', async () => {

@@ -15,17 +15,22 @@ router.post('/webhook', async (req, res) => {
 
               if (messageData && messageData.length > 0) {
                   const message = messageData[0];
-                  let messageContent = ''; 
-                  let fileUrl = ''; 
-                  let messageType = message.type; 
+                  let messageContent = ''; // Placeholder for message content
+                  let fileUrl = ''; // Placeholder for file or audio URL
+                  let messageType = message.type; // Type of message (text, audio, document, etc.)
 
-                  if (messageType === 'text') {
+                  // Ensure message type exists and process accordingly
+                  if (messageType === 'text' && message.text) {
+                      // If it's a text message
                       messageContent = message.text.body;
-                  } else if (messageType === 'image' || messageType === 'document' || messageType === 'audio') {
+                  } else if ((messageType === 'image' || messageType === 'document' || messageType === 'audio') && message[messageType]) {
+                      // If it's an image, document, or audio message
                       fileUrl = message[messageType].url;
                       messageContent = `Received a ${messageType}. You can download it here: ${fileUrl}`;
-                  }else{
-                    console.log(message)
+                  } else {
+                      // Handle unknown or unsupported message types
+                      console.log('Unsupported message type or missing data:', messageType);
+                      return res.status(400).send('Unsupported message type or missing data');
                   }
 
                   // Save the message to MongoDB
@@ -49,6 +54,7 @@ router.post('/webhook', async (req, res) => {
       res.status(500).send('Internal Server Error');
   }
 });
+
 
 
 

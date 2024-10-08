@@ -15,17 +15,17 @@ router.post('/webhook', async (req, res) => {
 
               if (messageData && messageData.length > 0) {
                   const message = messageData[0];
-                  let messageContent = ''; // Placeholder for message content
-                  let fileUrl = ''; // Placeholder for file or audio URL
-                  let messageType = message.type; // Type of message (text, audio, document, etc.)
+                  let messageContent = ''; 
+                  let fileUrl = ''; 
+                  let messageType = message.type; 
 
                   if (messageType === 'text') {
-                      // If it's a text message
                       messageContent = message.text.body;
                   } else if (messageType === 'image' || messageType === 'document' || messageType === 'audio') {
-                      // If it's an image, document, or audio message
                       fileUrl = message[messageType].url;
                       messageContent = `Received a ${messageType}. You can download it here: ${fileUrl}`;
+                  }else{
+                    console.log(message)
                   }
 
                   // Save the message to MongoDB

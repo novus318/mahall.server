@@ -7,43 +7,52 @@ const router=express.Router()
 
 
 router.post('/create', async (req, res) => {
-    const { name, holderName, accountNumber, ifscCode, balance, accountType } = req.body;
-  
-    try {
-      // Validate input
-      if (!name || !holderName || !accountType) {
-        return res.status(400).send({ success: false, message: 'Missing required fields' });
-      }
-  
-      // Check if accountType is valid
-      if (!['bank', 'cash'].includes(accountType)) {
-        return res.status(400).send({ success: false, message: 'Invalid account type' });
-      }
-  
-      // Check if there are any existing accounts
-      const existingAccounts = await BankModel.countDocuments();
-  
-      // Create a new bank or cash account document
-      const newAccount = new BankModel({
-        name,
-        holderName,
-        accountNumber: accountType === 'bank' ? accountNumber : undefined, 
-        ifscCode: accountType === 'bank' ? ifscCode : undefined,
-        balance,
-        accountType,
-        primary: existingAccounts === 0, 
-      });
-  
-      // Save the account document to the database
-      const savedAccount = await newAccount.save();
-  
-      // Send a success response
-      res.status(201).send({ success: true, account: savedAccount });
-    } catch (error) {
-      // Handle any errors that occur
-      res.status(500).send({ success: false, message: 'Server Error', error: error.message });
+  const { name, holderName, accountNumber, ifscCode, balance, accountType } = req.body;
+console.log('start')
+  try {
+    // Input validation
+    if (!name || !holderName || !accountType) {
+      return res.status(400).send({ success: false, message: 'Missing required fields' });
     }
-  });
+
+    // Validate account type
+    if (!['bank', 'cash'].includes(accountType)) {
+      return res.status(400).send({ success: false, message: 'Invalid account type' });
+    }
+      console.log('th')
+    // Check if there are any existing accounts
+    const existingAccounts = await BankModel.countDocuments();
+console.log('th1')
+    // Create a new bank or cash account document
+    const newAccount = new BankModel({
+      name,
+      holderName,
+      accountNumber: accountType === 'bank' ? accountNumber : undefined, 
+      ifscCode: accountType === 'bank' ? ifscCode : undefined,
+      balance: balance,
+      accountType,
+      primary: existingAccounts === 0, 
+    });
+
+    // Save the account document to the database
+    const savedAccount = await newAccount.save();
+console.log('end')
+    // Send a success response
+    res.status(201).send({
+      success: true,
+      message: 'Account created successfully',
+      account: savedAccount,
+    });
+  } catch (error) {
+    console.error('Error creating account:', error);
+    res.status(500).send({
+      success: false,
+      message: 'Server error while creating account',
+      error: error.message,
+    });
+  }
+});
+
 
   router.post('/set-primary', async (req, res) => {
     const { accountId } = req.body;
@@ -148,8 +157,16 @@ router.post('/inter-account-transfer', async (req, res) => {
   const { fromAccount, toAccount, amount } = req.body;
 
   // Ensure fromAccount and toAccount are not the same
+  if (!fromAccount || !toAccount || !amount || amount <= 0) {
+    return res.status(400).send({ success: false, message: 'Invalid input' });
+  }
+  const parsedAmount = Number(amount);
+
+  if (isNaN(parsedAmount) || parsedAmount <= 0) {
+    return res.status(400).send({ success: false, message: 'Invalid amount' });
+  }
   if (fromAccount._id === toAccount._id) {
-      return res.status(400).send({ success: false, message: 'From and to accounts cannot be the same.' });
+    return res.status(400).send({ success: false, message: 'From and to accounts cannot be the same.' });
   }
 
   const session = await BankModel.startSession(); // Start a new session
@@ -159,53 +176,60 @@ router.post('/inter-account-transfer', async (req, res) => {
 
       const debitAccount = await BankModel.findById(fromAccount._id).session(session);
 
-      if (debitAccount.balance < amount) {
-          // Abort transaction if insufficient funds
-          await session.abortTransaction();
-          session.endSession();
-          return res.status(400).send({ success: false, message: 'Insufficient funds.' });
+      if (debitAccount.balance < parsedAmount) {
+        await session.abortTransaction();
+        return res.status(400).send({ success: false, message: 'Insufficient funds.' });
       }
 
-      const debitTransaction = new transactionModel({
-          type: 'Debit',
-          amount,
-          accountId: fromAccount._id,
-          description: `Account Deposited to ${toAccount.name}`,
-          category: 'Self-Transfer',
-          openingBalance: debitAccount.balance,
-          closingBalance: debitAccount.balance - amount
-      });
-      await debitTransaction.save({ session });
+     const debitTransaction = new transactionModel({
+      type: 'Debit',
+      amount: parsedAmount,
+      accountId: fromAccount._id,
+      description: `Account Deposited to ${toAccount.name}`,
+      category: 'Self-Transfer',
+      openingBalance: Number(debitAccount.balance),
+      closingBalance: Number(debitAccount.balance) - parsedAmount
+    });
+    await debitTransaction.save({ session });
 
-      // Debit the fromAccount
-      await BankModel.findByIdAndUpdate(fromAccount._id, { $inc: { balance: -amount } }, { session });
+    await BankModel.findByIdAndUpdate(fromAccount._id, { $inc: { balance: -parsedAmount } }, { session });
 
-      // Fetch the toAccount and create a credit transaction
-      const creditAccount = await BankModel.findById(toAccount._id).session(session);
-      const creditTransaction = new transactionModel({
-          type: 'Credit',
-          amount,
-          accountId: toAccount._id,
-          description: `Amount Deposit from ${fromAccount.name} to ${toAccount.name}`,
-          category: 'Self-Transfer',
-          openingBalance: creditAccount.balance,
-          closingBalance: creditAccount.balance + amount,
-      });
-      await creditTransaction.save({ session });
+    // Fetch the toAccount
+    const creditAccount = await BankModel.findById(toAccount._id).session(session);
 
-      // Credit the toAccount
-      await BankModel.findByIdAndUpdate(toAccount._id, { $inc: { balance: +amount } }, { session });
+    if (!creditAccount) {
+      throw new Error('To account not found');
+    }
 
-      // Commit the transaction
-      await session.commitTransaction();
-      session.endSession();
+    // Create credit transaction
+    const creditTransaction = new transactionModel({
+      type: 'Credit',
+      amount: parsedAmount,
+      accountId: toAccount._id,
+      description: `Amount Deposit from ${fromAccount.name} to ${toAccount.name}`,
+      category: 'Self-Transfer',
+      openingBalance: Number(creditAccount.balance),
+      closingBalance: Number(creditAccount.balance) + parsedAmount,
+    });
+    await creditTransaction.save({ session });
 
-      res.status(200).send({ success: true, message: 'Transfer successful' });
+    // Credit the toAccount
+    await BankModel.findByIdAndUpdate(toAccount._id, { $inc: { balance: parsedAmount } }, { session });
+
+    // Commit the transaction
+    await session.commitTransaction();
+
+    // Send success response
+    res.status(200).send({ 
+      success: true, 
+      message: 'Transfer successful', 
+      transactions: { debitTransactionId: debitTransaction._id, creditTransactionId: creditTransaction._id } 
+    });
   } catch (error) {
-      // Rollback transaction in case of any error
-      await session.abortTransaction();
-      session.endSession();
-      res.status(500).send({ success: false, message: 'Transfer failed', error: error.message });
+    await session.abortTransaction(); // Rollback transaction in case of any error
+    res.status(500).send({ success: false, message: 'Transfer failed', error: error.message });
+  } finally {
+    session.endSession();  // Ensure session is always ended
   }
 });
 

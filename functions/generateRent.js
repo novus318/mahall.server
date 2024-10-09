@@ -17,10 +17,7 @@ export const collectRent = async () => {
     for (const building of buildings) {
       for (const room of building.rooms) {
         const activeContract = room.contractHistory.find((contract) => {
-          const currentDate = new Date();
-          const contractEndDate = new Date(contract.to);
-
-          return contract.status === 'active' && contractEndDate >= currentDate;
+          return contract.status === 'active' ;
         });
 
         if (activeContract) {

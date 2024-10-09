@@ -20,33 +20,13 @@ export const generateMonthlySalaries = async () => {
         
 
         // Find all active staff members
-        const activeStaffs = await staffModel.find({
-            $expr: {
-                $eq: [{ $arrayElemAt: ["$statusHistory.status", -1] }, "Active"]
-            }
-        });
+        const activeStaffs = await staffModel.find({ status: 'Active' });
+
         // Loop through each active staff and create a salary record
         for (const staff of activeStaffs) {
-            let salaryAmount;
-            let advanceAmount
-
-            // Check if it's the first salary
-            if (staff.firstSalary !== 0) {
-                salaryAmount = staff.firstSalary;
-
-                // Update firstSalary to 0 after the first salary is generated
-                staff.firstSalary = 0;
-                await staff.save();
-            } else {
-                salaryAmount = staff.salary;
-                advanceAmount = staff.advancePay
-                staff.advancePay = 0;
-                await staff.save();
-            }
             const salary = new salaryModel({
                 staffId: staff._id,
-                basicPay: salaryAmount,
-                advancePay:advanceAmount,
+                basicPay: staff.salary,
                 salaryPeriod: {
                     startDate: startOfLastMonth,
                     endDate: startOfMonth

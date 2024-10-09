@@ -15,7 +15,6 @@ const kudiCollectionSchema = new mongoose.Schema({
     },
     description: {
         type: String,
-        required: false
     },
     accountId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -49,6 +48,9 @@ const kudiCollectionSchema = new mongoose.Schema({
         type: String,
         enum: ['Paid', 'Unpaid', 'Rejected'],
         required: true
+    },
+    rejectionReason :{
+        type: String,
     },
     receiptNumber: {
         type: String,

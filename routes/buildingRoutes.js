@@ -76,7 +76,7 @@ router.post('/add-room', async (req, res) => {
 router.post('/add-contract/:buildingID/:roomId', async (req, res) => {
   try {
     const { buildingID, roomId } = req.params;
-    const { from, to, tenant, rent, firstRent, deposit } = req.body;
+    const { from, to, tenant, rent, shop, deposit } = req.body;
 
     const building = await buildingModel.findById(buildingID);
 
@@ -104,10 +104,10 @@ router.post('/add-contract/:buildingID/:roomId', async (req, res) => {
       from,
       to,
       tenant,
-      firstRent,
+      shop,
       rent,
       deposit,
-      status: 'active' // Mark the new contract as active
+      status: 'active' 
     };
 
     room.contractHistory.push(newContract);
@@ -269,6 +269,8 @@ router.get('/get-ByRoom/:buildingID/:roomId', async (req, res) => {
       return res.status(404).json({ message: 'Room not found' });
     }
 const roomDetails = {
+  buildingID: building.buildingID,
+  buildingName: building.buildingName,
   roomNumber:room.roomNumber,
   contractHistory: room.contractHistory.filter(contract => contract.status === 'active')
 }

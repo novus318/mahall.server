@@ -1,11 +1,5 @@
 import mongoose from "mongoose";
 
-const statusSchema = new mongoose.Schema({
-  status: { type: String, enum: ['Active', 'Inactive', 'On Leave'], required: true },
-  startDate: { type: Date, required: true }, 
-  endDate: { type: Date }, 
-});
-
 const staffSchema = new mongoose.Schema({
   name: { type: String, required: true }, 
   age:{
@@ -16,18 +10,21 @@ const staffSchema = new mongoose.Schema({
   department: { type: String, required: true },
   position: { type: String, required: true },
   salary: { type: Number, required: true },
-  joinDate: { type: Date, default: Date.now },
-  firstSalary:{
+  advancePayment:{
     type: Number,
-    required: true,
+    default: 0,
   },
-  advancePay: { type: Number, default: 0 },
+  joinDate: { type: Date, default: Date.now },
   contactInfo: {
     phone: { type: String, required: true },
-    email: { type: String, required: true },
+    email: { type: String, },
     address: String,
   },
-  statusHistory: [statusSchema], // Array to store status changes over time
+  status:{
+    type: String,
+    enum: ['Active', 'Resigned'], 
+    required: true,
+  } 
 },
 { timestamps: true });
 

@@ -74,7 +74,7 @@ const sendWhatsAppMessage = async (house,month) => {
             WHATSAPP_API_URL,
             {
                 messaging_product: 'whatsapp',
-                to: `+91${house.familyHead.whatsappNumber}`,
+                to: `${house.familyHead.whatsappNumber}`,
                 type: 'template',
                 template: {
                     name: 'collection',
@@ -120,7 +120,7 @@ export const sendWhatsAppMessageFunction = async (collection) => {
             WHATSAPP_API_URL,
             {
                 messaging_product: 'whatsapp',
-                to: `+91${collection.memberId.whatsappNumber}`,
+                to: `${collection.memberId.whatsappNumber}`,
                 type: 'template',
                 template: {
                     name: 'collection_reciept',

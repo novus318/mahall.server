@@ -1,15 +1,16 @@
 import express  from "express";
 import staffModel from "../model/staffModel.js";
 import salaryModel from "../model/salaryModel.js"
-import { debitAccount } from "../functions/transaction.js";
+import { creditAccount, debitAccount } from "../functions/transaction.js";
 import { sendWhatsAppSalary } from "../functions/generateSalary.js";
+import mongoose from "mongoose";
 const router=express.Router()
 
 
 
 router.post('/create', async (req, res) => {
     try {
-        const { name, age, employeeId, department, position, salary,firstSalary, joinDate, contactInfo } = req.body;
+        const { name, age, employeeId, department, position, salary, joinDate, contactInfo } = req.body;
 
         const existingStaff = await staffModel.findOne({ employeeId: employeeId });
         if (existingStaff) {
@@ -22,18 +23,11 @@ router.post('/create', async (req, res) => {
             employeeId,
             department,
             position,
-            firstSalary,
             salary,
             joinDate,
+            status: 'Active',
             contactInfo,
         });
-        // Add a new status to the history array
-        newStaff.statusHistory.push({
-            status: 'Active',
-            startDate: joinDate,
-            endDate: null,
-        });
-
         // Save the new staff member to the database
         await newStaff.save();
 
@@ -58,18 +52,8 @@ router.put('/update-status/:id', async (req, res) => {
             return res.status(404).json({ message: 'Staff member not found' });
         }
 
-        // End the current status if it exists
-        const currentStatus = staff.statusHistory[staff.statusHistory.length - 1];
-        if (currentStatus && !currentStatus.endDate) {
-            currentStatus.endDate = new Date(); // Set end date for the current status
-        }
-
-        // Add the new status
-        staff.statusHistory.push({
-            status: newStatus,
-            startDate: new Date()
-        });
-
+        // Update the status of the staff member
+        staff.status = newStatus;
         await staff.save();
 
         res.status(200).json({ success:true ,message: 'Staff status updated successfully', staff });
@@ -199,67 +183,136 @@ router.get('/pending-salaries', async (req, res) => {
 
 router.put('/update/salary/:id', async (req, res) => {
     const payslipId = req.params.id;
-    const { deductions, netPay,status, paymentDate,accountId } = req.body; // Extract the fields from the request body
+    const { netPay, status, paymentDate, accountId, leaveDays,leaveDeduction, advanceRepayment, rejectionReason } = req.body;
+
+    if (!payslipId || !status ) {
+        return res.status(400).json({
+            success: false,
+            message: 'Missing required fields',
+        });
+    }
 
     try {
-        if(status === 'Rejected'){
-            await salaryModel.findByIdAndUpdate(
+        let session = await mongoose.startSession();
+        session.startTransaction();
+
+        // Handle rejected payroll
+        if (status === 'Rejected') {
+            const updatePayslip = await salaryModel.findByIdAndUpdate(
                 payslipId,
-                { status: 'Rejected' },
-                { new: true }
-            )
-            return res.status(200).json({ 
-                success: true,
-                message: 'Payroll rejected successfully',
-            });
+                { status: 'Rejected', rejectionReason: rejectionReason || 'No reason provided' },
+                { new: true, session }
+            );
+
+            if (!updatePayslip) {
+                await session.abortTransaction();
+                return res.status(404).json({ success: false, message: 'Payroll not found' });
+            }
+
+            await session.commitTransaction();
+            session.endSession();
+            return res.status(200).json({ success: true, message: 'Payroll rejected successfully' });
         }
-        // Find the payslip by ID and update it
+
+        // Handle payroll update
         const updatePayslip = await salaryModel.findByIdAndUpdate(
             payslipId,
-            { 
-                deductions,
+            {
+                advanceDeduction: advanceRepayment || 0,
                 netPay,
+                onleave: {
+                    days: leaveDays || 0,
+                    deductAmount: Number(leaveDeduction),
+                },
                 paymentDate,
-                status: status,
+                status,
                 accountId,
-             },
-            { new: true }
+            },
+            { new: true, session }
         ).populate('staffId');
 
         if (!updatePayslip) {
-            return res.status(404).json({ 
-                success: false,
-                message: 'Payroll not found' 
-            });
+            await session.abortTransaction();
+            return res.status(404).json({ success: false, message: 'Payroll not found' });
         }
-            const category = 'Salary'
-            const description = `Salary payment for  ${updatePayslip.salaryPeriod.startDate.toDateString()} to ${updatePayslip.salaryPeriod.endDate.toDateString()} for ${updatePayslip.staffId.name}`
-            const transaction= await debitAccount(accountId,netPay,description,category)
-            if(!transaction){
-                await salaryModel.findByIdAndUpdate(
-                    payslipId,
-                    { status: 'Pending' },
-                    { new: true }
-                )
-                return res.status(500).json({ message: 'Error processing transaction please check your account balance' });
-            }else{
-                sendWhatsAppSalary(updatePayslip)
-                res.status(200).json({ 
-                    success: true,
-                    message: 'Payroll updated successfully', 
-                    updatePayslip 
-                });
+
+        const category = 'Salary';
+        const pay = updatePayslip.basicPay - updatePayslip.onleave.deductAmount;
+        const ref = `/staff/details/${updatePayslip.staffId._id}`;
+        const description = `Salary payment for ${updatePayslip.salaryPeriod.startDate.toDateString()} to ${updatePayslip.salaryPeriod.endDate.toDateString()} for ${updatePayslip.staffId.name}`;
+
+        const transaction = await debitAccount(accountId, pay, description, category,ref);
+        if (!transaction) {
+            await salaryModel.findByIdAndUpdate(payslipId, { status: 'Pending' }, { new: true, session });
+            await session.abortTransaction();
+            return res.status(500).json({ message: 'Error processing transaction, please check your account balance' });
+        }
+
+        // Handle advance repayment
+        if (advanceRepayment > 0) {
+            const advanceDescription = `Advance repayment from ${updatePayslip.staffId.name}`;
+            const advanceTransaction = await creditAccount(accountId, advanceRepayment, advanceDescription, category,ref);
+            if (!advanceTransaction) {
+                await salaryModel.findByIdAndUpdate(payslipId, { status: 'Pending' }, { new: true, session });
+                await session.abortTransaction();
+                return res.status(500).json({ message: 'Error processing advance repayment transaction, please check your account balance' });
+            } else {
+                await staffModel.findByIdAndUpdate(updatePayslip.staffId._id, { $inc: { advancePayment: -advanceRepayment } }, { session });
             }
+        }
+
+        // Send WhatsApp notification and finalize
+        sendWhatsAppSalary(updatePayslip);
+        await session.commitTransaction();
+        session.endSession();
+
+        res.status(200).json({ success: true, message: 'Payroll updated successfully', updatePayslip });
     } catch (error) {
-        console.log(error)
-        res.status(500).json({ 
-            error,
+        console.error('Error updating payroll:', error);
+        res.status(500).json({
             success: false,
-            message: 'Error updating payroll' 
+            message: 'Error updating payroll',
+            error: error.message || 'Internal server error',
         });
     }
 });
 
+router.post('/repay-advance-pay/:id', async (req, res) => {
+    const staffId = req.params.id;
+    const { amount, targetAccount } = req.body; // Extract the fields from the request body
+try {
+    const updatedStaff = await staffModel.findById(staffId);
+    if (!updatedStaff) {
+        return res.status(404).json({ 
+            success: false,
+            message: 'Staff member not found' 
+        });
+    }
+    updatedStaff.advancePayment -= Number(amount)
+    const description = `Advance repayment from ${updatedStaff.name}`
+    const category = 'Salary'
+    const ref = `/staff/details/${staffId}`
+    const transaction = creditAccount(targetAccount,amount,description,category,ref)
+    if(!transaction){
+        updatedStaff.advancePayment += Number(amount)
+        return res.status(500).json({ success:false,message: 'Error processing transaction please check your account balance' });
+    }else{
+    await updatedStaff.save()
+    res.status(200).json({ 
+        success: true,
+        message: 'Advance payment  successfull', 
+        updatedStaff 
+    });
+}
+} catch (error) {
+    res.status(500).json({ 
+        error,
+        success: false,
+        message: 'Error processing advance payment' 
+    });
+}
+ 
+});
 router.post('/request-advance-pay/:id', async (req, res) => {
     const staffId = req.params.id;
     const { amount, targetAccount } = req.body; // Extract the fields from the request body
@@ -271,12 +324,13 @@ try {
             message: 'Staff member not found' 
         });
     }
-    updatedStaff.advancePay += amount
+    updatedStaff.advancePayment += amount
     const description = `Advance salary payment for ${updatedStaff.name}`
     const category = 'Salary'
-    const transaction = debitAccount(targetAccount,amount,description,category)
+    const ref = `/staff/details/${staffId}`
+    const transaction = debitAccount(targetAccount,amount,description,category,ref)
     if(!transaction){
-        updatedStaff.advancePay -= amount
+        updatedStaff.advancePayment -= amount
         return res.status(500).json({ success:false,message: 'Error processing transaction please check your account balance' });
     }else{
     await updatedStaff.save()

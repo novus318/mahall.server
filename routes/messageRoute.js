@@ -3,10 +3,35 @@ import messageModel from "../model/messageModel.js";
 const router=express.Router()
 
 
-const downloadMedia = async (mediaId) => {
-  const mediaUrl = `https://your_media_url/${mediaId}`; // WhatsApp Media URL
-  const response = await axios.get(mediaUrl, { responseType: 'arraybuffer' });
-  return Buffer.from(response.data, 'binary');  // Convert to blob
+const downloadMedia = async (Id) => {
+  const url = `https://graph.facebook.com/v16.0/${Id}`;  // WhatsApp media URL
+ try{
+   const response = await axios.get(url, {
+      headers: {
+          Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`  // Replace with your access token
+      },
+  });
+  // Convert the binary data to a blob (or buffer)
+  if (response.data.url){
+    const mediaResponse = await axios.get(response.data.url, {
+      headers: {
+        Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}` // Replace with your access token
+      },
+      responseType: 'stream', // Handle streaming response
+    });
+    const chunks = [];
+    for await (const chunk of mediaResponse.data) {
+      chunks.push(chunk);
+    }
+    const buffer = Buffer.concat(chunks);
+    return buffer;
+  } else {
+    throw new Error('No media URL found in the response.');
+  }
+} catch (error) {
+  console.error('Error downloading media:', error.message);
+  throw error; // Rethrow error if you want to handle it elsewhere
+}
 };
 router.post('/webhook', async (req, res) => {
   try {
@@ -33,8 +58,7 @@ router.post('/webhook', async (req, res) => {
                               senderName,
                               senderNumber,
                               messageContent: message.text.body,
-                              messageType: 'text',
-                              timestamp
+                              messageType: 'text'
                           });
                           break;
 
@@ -45,8 +69,7 @@ router.post('/webhook', async (req, res) => {
                               senderNumber,
                               emoji: message.reaction.emoji,
                               messageType: 'reaction',
-                              reactedToMessageId: message.reaction.messsage_id,
-                              timestamp
+                              reactedToMessageId: message.reaction.messsage_id
                           });
                           break;
 
@@ -60,7 +83,6 @@ router.post('/webhook', async (req, res) => {
                                 messageType: 'image',
                                 mediaBlob: imageBlob,
                                 mediaType: message.image.mime_type,
-                                timestamp
                             });
                             break;
 
@@ -73,11 +95,20 @@ router.post('/webhook', async (req, res) => {
                                 messageType: 'sticker',
                                 mediaBlob: stickerBlob,
                                 mediaType: message.sticker.mime_type,
-                                timestamp
                             });
                             break;
 
-                      // Handle other media types similarly (audio, video, etc.)
+                            case 'audio':
+                              const audioBlob = await downloadMedia(message.audio.id);
+                              newMessage = new messageModel({
+                                senderName,
+                                senderNumber,
+                                messageContent: message.audio.duration,
+                                messageType: 'audio',
+                                mediaBlob: audioBlob,
+                                mediaType: message.audio.mime_type,
+                            });
+                            break;
                       default:
                           console.log(`Unknown message type: ${message.type}`);
                           break;
@@ -94,7 +125,7 @@ router.post('/webhook', async (req, res) => {
 
       res.sendStatus(200); // Acknowledge the request
   } catch (error) {
-      console.error('Error processing message:', error,req.body.entry);
+      console.error('Error processing message:', error);
       res.status(500).send('Internal Server Error');
   }
 });
@@ -130,7 +161,7 @@ router.get('/messages', async (req, res) => {
   }
 })
 
-router.delete('/messages/delete', async (req, res) => {
+obliging-factual-rat.ngrok-free.approuter.delete('/messages/delete', async (req, res) => {
   const { senderName, senderNumber } = req.body;
 
   try {

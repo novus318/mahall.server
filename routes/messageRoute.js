@@ -13,14 +13,14 @@ const downloadMedia = async (Id) => {
  try{
    const response = await axios.get(url, {
       headers: {
-          Authorization: `Bearer ${ACCESS_TOKEN}`  // Replace with your access token
+          Authorization: `Bearer ${ACCESS_TOKEN}` 
       },
   });
   // Convert the binary data to a blob (or buffer)
   if (response.data.url){
     const mediaResponse = await axios.get(response.data.url, {
       headers: {
-        Authorization: `Bearer ${ACCESS_TOKEN}` // Replace with your access token
+        Authorization: `Bearer ${ACCESS_TOKEN}` 
       },
       responseType: 'stream', // Handle streaming response
     });
@@ -152,7 +152,7 @@ router.post('/webhook', async (req, res) => {
 
       res.sendStatus(200); // Acknowledge the request
   } catch (error) {
-      console.error('Error processing message:', error);
+      console.error('Error processing', error);
       res.status(500).send('Internal Server Error');
   }
 });

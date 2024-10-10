@@ -268,7 +268,7 @@ router.put('/update/salary/:id', async (req, res) => {
         }
 
         // Send WhatsApp notification and finalize
-        sendWhatsAppSalary(updatePayslip);
+        await sendWhatsAppSalary(updatePayslip);
         await session.commitTransaction();
         session.endSession();
 

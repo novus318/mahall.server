@@ -243,9 +243,11 @@ router.put('/update/collection/:id', async (req, res) => {
         if (!updatedCollection) {
             return res.status(404).send({ success: false, message: 'Kudi collection not found' });
         }
+        const ref =`/house/house-details/${updatedCollection.houseId._id}`
         const transaction = creditAccount(updatedCollection.accountId, updatedCollection.amount,
             updatedCollection.description,
-            updatedCollection.category.name
+            updatedCollection.category.name,
+            ref
         )
         if (!transaction) {
             await kudiCollection.findByIdAndUpdate(

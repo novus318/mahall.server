@@ -6,6 +6,7 @@ import recieptCategoryModel from "../model/recieptCategoryModel.js";
 import recieptModel from "../model/recieptModel.js";
 import recieptNumberModel from "../model/recieptNumberModel.js";
 import { NextReceiptNumber } from "../functions/recieptNumber.js";
+import { sendRentConfirmWhatsapp } from "../functions/generateRent.js";
 const router = express.Router()
 
 
@@ -121,7 +122,7 @@ router.post('/add-contract/:buildingID/:roomId', async (req, res) => {
 
     res.status(200).json({
       success: true,
-      contract:newContract,
+      contractId:newContract._id,
       message: 'Contract added successfully'
     });
   } catch (error) {
@@ -642,7 +643,7 @@ router.put('/update/rent-collection/:buildingID/:roomId/:contractId', async (req
     rentCollection.paymentMethod = paymentType;
     rentCollection.paymentDate = paymentDate;
     rentCollection.onleave.days = leaveDays;
-    rentCollection.onleave.deduction = leaveDeduction;
+    rentCollection.onleave.deductAmount = leaveDeduction;
     rentCollection.advanceDeduction = advanceRepayment;
     rentCollection.accountId = accountId;
 
@@ -691,11 +692,10 @@ router.put('/update/rent-collection/:buildingID/:roomId/:contractId', async (req
     // Commit the transaction
     await session.commitTransaction();
     session.endSession();
-
+await sendRentConfirmWhatsapp(rentCollection,activeContract.tenant,room,building,activeContract)
     res.status(200).json({ success: true, message: 'Rent collection status updated successfully', rentCollection });
 
   } catch (error) {
-    // Rollback transaction on error
     if (session.inTransaction()) {
       await session.abortTransaction();
     }

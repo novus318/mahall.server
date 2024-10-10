@@ -185,29 +185,48 @@ await existingPayment.save();
 router.put('/reject-payment/:paymentId', async (req, res) => {
     try {
         const { paymentId } = req.params;
+        const { rejectionReason } = req.body;
 
-        // Edit the payment
+        // Validate rejection reason
+        if (!rejectionReason || typeof rejectionReason !== 'string') {
+            return res.status(400).json({
+                success: false,
+                message: 'Rejection reason is required and must be a string.',
+            });
+        }
+
+        // Find payment by ID
         const existingPayment = await paymentModel.findById(paymentId);
-    if (!existingPayment) throw new Error('Payment not found');
+        if (!existingPayment) {
+            return res.status(404).json({
+                success: false,
+                message: 'Payment not found.',
+            });
+        }
 
+        // Update payment status and reason
+        existingPayment.status = 'Rejected';
+        existingPayment.rejectionReason = rejectionReason;
 
-    existingPayment.status = 'Rejected';
+        // Delete the associated debit transaction
+        const deleteResult = await deleteDebitTransaction(existingPayment.transactionId);
+        if (!deleteResult) {
+            return res.status(500).json({
+                success: false,
+                message: 'Error in rejecting payment. Please try again later.',
+            });
+        }
 
+        // Save the updated payment
+        await existingPayment.save();
 
-    await deleteDebitTransaction(existingPayment.transactionId);
-if(!deleteDebitTransaction){
-    res.status(500).json({
-        success: false,
-        message: 'Error in rejecting. try later.',
-        error: deleteDebitTransaction,
-    });
-}
-await existingPayment.save();
+        // Respond with success
         res.status(200).json({
             success: true,
-            message: 'Payment and rejection updated successfully.',
+            message: 'Payment rejection updated successfully.',
         });
     } catch (error) {
+        console.error('Error in rejecting payment:', error);
         res.status(500).json({
             success: false,
             message: 'An error occurred while updating the payment.',
@@ -238,7 +257,7 @@ router.get('/get-payment/number', async (req, res) => {
 router.get('/get-payment/:paymentId', async (req, res) => {
     try {
         const { paymentId } = req.params;
-        const payment = await paymentModel.findById(paymentId).populate('categoryId memberId otherRecipient');
+        const payment = await paymentModel.findById(paymentId).populate('categoryId');
         if (!payment) throw new Error('Payment not found');
         res.status(200).json({ success: true, payment });
     } catch (error) {

@@ -36,6 +36,9 @@ const paymentSchema = new mongoose.Schema({
         default: 'Pending',
         required: true
     },
+    rejectionReason:{
+        type: String, 
+    },
     paymentType: {
         type: String,
         enum: ['Online', 'Cash'], // Type of payment: Online or Cash

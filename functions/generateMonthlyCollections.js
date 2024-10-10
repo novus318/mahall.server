@@ -59,7 +59,7 @@ const newRecieptNumber = await NextReceiptNumber(lastRecieptNumber);
                 lastMonthName
             );
           
-            await new Promise(resolve => setTimeout(resolve, 10000));
+            await new Promise(resolve => setTimeout(resolve, 5000));
         }
 
         console.log('Monthly collections created for all houses');

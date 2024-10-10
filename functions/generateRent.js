@@ -33,42 +33,19 @@ export const collectRent = async () => {
             continue;
           }
 
-          let amountDue;
+          let amountDue = activeContract.rent;
 
-          // Check if firstRent needs to be applied
-          if (activeContract.firstRent > 0) {
-            // Deduct firstRent from the amount due if it hasn't been applied yet
-            amountDue = activeContract.firstRent;
-            // Reset firstRent after applying it
-            activeContract.firstRent = 0;
-          } else {
-            amountDue = activeContract.rent;
-          }
-
-          // Check if there's an advance payment
-          if (activeContract.advancePayment && activeContract.advancePayment > 0) {
-            if (activeContract.advancePayment >= amountDue) {
-              // Full payment from advance
-              activeContract.advancePayment -= amountDue;
-              amountDue = 0;
-            } else {
-              // Partial payment from advance
-              amountDue -= activeContract.advancePayment;
-              activeContract.advancePayment = 0;
-            }
-          }
 
           const rentCollection = {
             period: period,
             amount: amountDue,
-            status: amountDue === 0 ? 'Paid' : 'Pending',
-            paymentDate: amountDue === 0 ? today : null, // Mark as paid if fully covered by advance or firstRent
-          };
+            status: 'Pending',
+         };
 
           activeContract.rentCollection.push(rentCollection);
 
           // Notify tenant
-          await sendWhatsapp(rentCollection, activeContract.tenant,room,building);
+          await sendWhatsapp(rentCollection, activeContract.tenant,room,building,activeContract);
 
           // Add a 2-second delay between each rent collection
           await delay(2000);
@@ -85,15 +62,13 @@ export const collectRent = async () => {
   }
 };
 
-const sendWhatsapp = async (rentCollection, tenant,room,building) => {
+const sendWhatsapp = async (rentCollection, tenant,room,building,contract) => {
   try {
-    console.log(rentCollection)
-    console.log(tenant)
     const response = await axios.post(
         WHATSAPP_API_URL,
         {
             messaging_product: 'whatsapp',
-            to: `91${tenant.number}`,
+            to: `${tenant.number}`,
             type: 'template',
             template: {
                 name: 'rent_collection',
@@ -115,7 +90,54 @@ const sendWhatsapp = async (rentCollection, tenant,room,building) => {
                         sub_type: 'url',
                         index: '0',
                         parameters: [
-                            { type: 'text', text: `${building._id}/${room._id}` }  
+                            { type: 'text', text: `${building._id}/${room._id}/${contract._id}` }  
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            headers: {
+                'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                'Content-Type': 'application/json'
+            }
+        }
+    );
+    console.log('WhatsApp message sent successfully:', response.data);
+} catch (error) {
+    console.error('Error sending WhatsApp message:', error);
+}
+};
+
+export const sendRentConfirmWhatsapp = async (rentCollection, tenant,room,building,contract) => {
+  try {
+    const response = await axios.post(
+        WHATSAPP_API_URL,
+        {
+            messaging_product: 'whatsapp',
+            to: `${tenant.number}`,
+            type: 'template',
+            template: {
+                name: 'rent_receipt',
+                language: {
+                    code: 'ml' 
+                },
+                components: [
+                    {
+                        type: 'body',
+                        parameters: [
+                            { type: 'text', text: tenant.name },     
+                            { type: 'text', text: room.roomNumber },   
+                            { type: 'text', text: rentCollection.period},
+                            { type: 'text', text: rentCollection.PaymentAmount},          
+                        ]
+                    },
+                    {
+                        type: 'button',
+                        sub_type: 'url',
+                        index: '0',
+                        parameters: [
+                            { type: 'text', text: `${building._id}/${room._id}/${contract._id}` }  
                         ]
                     }
                 ]

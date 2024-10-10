@@ -40,11 +40,36 @@ app.use(morgan('dev'))
 connectDB();
 
  //generateMonthlyCollections()
-//generateMonthlySalaries()
+// generateMonthlySalaries()
 // collectRent()
 
 cron.schedule('0 10 1 * *', async () => {
-  await generateMonthlyCollections();
+  try {
+    await generateMonthlyCollections();
+    console.log('generateMonthlyCollections executed successfully');
+  } catch (error) {
+    console.error('Error in generateMonthlyCollections:', error);
+  }
+});
+
+// Schedule generateMonthlySalaries() for the 2nd of every month at 10 AM
+cron.schedule('0 10 2 * *', async () => {
+  try {
+    await generateMonthlySalaries();
+    console.log('generateMonthlySalaries executed successfully');
+  } catch (error) {
+    console.error('Error in generateMonthlySalaries:', error);
+  }
+});
+
+// Schedule collectRent() for the 3rd of every month at 10 AM
+cron.schedule('0 10 3 * *', async () => {
+  try {
+    await collectRent();
+    console.log('collectRent executed successfully');
+  } catch (error) {
+    console.error('Error in collectRent:', error);
+  }
 });
 app.get('/',(req,res)=>{
   res.send({

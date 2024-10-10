@@ -102,7 +102,7 @@ router.post('/create-reciept', async (req, res) => {
         const transaction = await creditAccount(accountId, amount, description, category);
 
         if (!transaction) {
-            await Payment.findByIdAndDelete(newReciept._id);
+            await recieptModel.findByIdAndDelete(newReciept._id);
             return res.status(500).json({ success: false, message: 'Error creating payment. Transaction failed.' });
         } else {
             newReciept.status = 'Completed';
@@ -209,23 +209,53 @@ router.put('/update-reciept/:id', async (req, res) => {
 router.put('/reject-reciept/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const reciept = await recieptModel.findById(id);
-        if (!reciept) return res.status(404).json({ success: false, message: 'Reciept not found.' });
+        const { rejectionReason } = req.body;
 
-        reciept.status= 'Rejected'
-        await deleteCreditTransaction(reciept.transactionId);
-        if(!deleteCreditTransaction){
-            res.status(500).json({
+        // Validate rejection reason
+        if (!rejectionReason || typeof rejectionReason !== 'string') {
+            return res.status(400).json({
                 success: false,
-                message: 'Error in rejecting. try later.',
-                error: deleteCreditTransaction,
+                message: 'Rejection reason is required and must be a string.',
             });
         }
+
+        // Find receipt by ID
+        const reciept = await recieptModel.findById(id);
+        if (!reciept) {
+            return res.status(404).json({
+                success: false,
+                message: 'Receipt not found.',
+            });
+        }
+
+        // Update receipt status and reason
+        reciept.status = 'Rejected';
+        reciept.rejectionReason = rejectionReason;
+
+        // Delete the associated credit transaction
+        const deleteResult = await deleteCreditTransaction(reciept.transactionId);
+        if (!deleteResult) {
+            return res.status(500).json({
+                success: false,
+                message: 'Error in rejecting. Please try again later.',
+            });
+        }
+
+        // Save updated receipt
         await reciept.save();
-        res.status(200).json({ success: true, message: 'Reciept rejection successfully.' });
+
+        // Respond with success
+        res.status(200).json({
+            success: true,
+            message: 'Receipt rejected successfully.',
+        });
     } catch (error) {
-        console.log(error)
-        res.status(500).json({ message: 'Server error', error: error.message });
+        console.error('Error in rejecting receipt:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error. Please try again later.',
+            error: error.message,
+        });
     }
 });
 

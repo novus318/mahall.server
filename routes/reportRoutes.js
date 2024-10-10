@@ -84,7 +84,7 @@ router.get('/get/payment/byDate', async (req, res) => {
 
         const payments = await paymentModel.find({
             createdAt: { $gte: start, $lte: end }
-        }).sort({ createdAt: -1 }).populate('categoryId memberId otherRecipient');
+        }).sort({ createdAt: -1 }).populate('categoryId');
 
         // If no receipts found
         if (!payments || payments.length === 0) {

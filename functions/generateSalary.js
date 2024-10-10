@@ -49,7 +49,7 @@ export const sendWhatsAppSalary = async (salary) => {
             WHATSAPP_API_URL,
             {
                 messaging_product: 'whatsapp',
-                to: `91${salary.staffId.contactInfo.phone}`,
+                to: `${salary.staffId.contactInfo.phone}`,
                 type: 'template',
                 template: {
                     name: 'salary_confirm',

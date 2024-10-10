@@ -1,7 +1,7 @@
 import express  from "express";
 import staffModel from "../model/staffModel.js";
 import salaryModel from "../model/salaryModel.js"
-import { creditAccount, debitAccount } from "../functions/transaction.js";
+import { creditAccount, debitAccount, deleteDebitTransaction } from "../functions/transaction.js";
 import { sendWhatsAppSalary } from "../functions/generateSalary.js";
 import mongoose from "mongoose";
 const router=express.Router()
@@ -241,8 +241,13 @@ router.put('/update/salary/:id', async (req, res) => {
         const ref = `/staff/details/${updatePayslip.staffId._id}`;
         const description = `Salary payment for ${updatePayslip.salaryPeriod.startDate.toDateString()} to ${updatePayslip.salaryPeriod.endDate.toDateString()} for ${updatePayslip.staffId.name}`;
 
-        const transaction = await debitAccount(accountId, pay, description, category,ref);
-        if (!transaction) {
+        let debitTransactionId;
+
+        // Debit the account for net pay
+        const transaction = await debitAccount(accountId, pay, description, category, ref);
+        if (transaction) {
+            debitTransactionId = transaction._id;
+        } else {
             await salaryModel.findByIdAndUpdate(payslipId, { status: 'Pending' }, { new: true, session });
             await session.abortTransaction();
             return res.status(500).json({ message: 'Error processing transaction, please check your account balance' });
@@ -251,8 +256,9 @@ router.put('/update/salary/:id', async (req, res) => {
         // Handle advance repayment
         if (advanceRepayment > 0) {
             const advanceDescription = `Advance repayment from ${updatePayslip.staffId.name}`;
-            const advanceTransaction = await creditAccount(accountId, advanceRepayment, advanceDescription, category,ref);
+            const advanceTransaction = await creditAccount(accountId, advanceRepayment, advanceDescription, category, ref);
             if (!advanceTransaction) {
+                await deleteDebitTransaction(debitTransactionId);
                 await salaryModel.findByIdAndUpdate(payslipId, { status: 'Pending' }, { new: true, session });
                 await session.abortTransaction();
                 return res.status(500).json({ message: 'Error processing advance repayment transaction, please check your account balance' });
@@ -262,7 +268,7 @@ router.put('/update/salary/:id', async (req, res) => {
         }
 
         // Send WhatsApp notification and finalize
-        sendWhatsAppSalary(updatePayslip);
+        await sendWhatsAppSalary(updatePayslip);
         await session.commitTransaction();
         session.endSession();
 

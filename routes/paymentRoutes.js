@@ -2,9 +2,9 @@ import express  from "express";
 import { debitAccount, deleteDebitTransaction, updateDebitTransaction } from "../functions/transaction.js";
 import paymentCategoryModel from "../model/paymentCategoryModel.js";
 import paymentModel from "../model/paymentModel.js";
-import memberModel from "../model/memberModel.js";
 import recieptNumberModel from "../model/recieptNumberModel.js";
 import { NextReceiptNumber } from "../functions/recieptNumber.js";
+import mongoose from "mongoose";
 const router=express.Router()
 
 
@@ -54,8 +54,7 @@ router.get('/category/all', async (req, res) => {
     }
 })
 router.post('/create-payment', async (req, res) => {
-    try {
-        const { receiptNumber,items, date, accountId, categoryId, paymentType, memberId, otherRecipient } = req.body;
+        const { receiptNumber,items, date, accountId, categoryId, paymentType, paymentTo } = req.body;
 
         // Calculate the total amount from the items array
         const total = items.reduce((acc, item) => acc + item.amount, 0);
@@ -65,73 +64,75 @@ router.post('/create-payment', async (req, res) => {
             return res.status(400).json({ message: 'Items, accountId, categoryId, and paymentType are required.' });
         }
 
-        // Validate that either memberId or otherRecipient is provided
-        if (!memberId && (!otherRecipient || !otherRecipient.name)) {
-            return res.status(400).json({ message: 'Either member or otherRecipient with a name is required.' });
-        }
-
-        // If memberId is provided, validate that the member exists
-        if (memberId) {
-            const memberExists = await memberModel.findById(memberId);
-            if (!memberExists) {
-                return res.status(404).json({ message: 'Member not found.' });
+        const session = await mongoose.startSession();;
+        session.startTransaction();
+    
+        try {
+            if (receiptNumber) {
+                const checkReceiptNumber = await paymentModel.findOne({ receiptNumber });
+                if (checkReceiptNumber) {
+                    return res.status(400).json({ message: 'Receipt number already exists.' });
+                }
             }
-        }
-        if(receiptNumber){
-            const checkRecieptNumber = await paymentModel.findOne({receiptNumber:receiptNumber});
-            if (checkRecieptNumber) {
-                    return res.status(400).json({ message: 'Reciept number already exists.' })
+    
+            // Create the payment document
+            const newPayment = new paymentModel({
+                total,
+                date: date || Date.now(),
+                accountId,
+                categoryId: categoryId._id,
+                status: 'Pending',
+                paymentType,
+                paymentTo,
+                items,
+                receiptNumber
+            });
+    
+            await newPayment.save({ session });
+    
+            const category = categoryId.name;
+            const description = `Payment for ${category} by ${paymentType}-${receiptNumber}`;
+            const transaction = await debitAccount(accountId,total,description, category);
+    
+            if (!transaction) {
+                throw new Error('Transaction failed.');
             }
-        }
-
-        // Create the payment
-        const newPayment = new paymentModel({
-            total,
-            date: date || Date.now(),
-            accountId,
-            categoryId:categoryId._id,
-            status:'Pending',
-            paymentType,
-            memberId: memberId || null,
-            otherRecipient: memberId ? null : otherRecipient,
-            items,
-            receiptNumber
-        })
-        await newPayment.save();
-
-        const category = categoryId.name;
-        const des = `Payment for ${category} by ${paymentType}`;
-        const transaction = await debitAccount(accountId, total, des, category);
-
-        if (!transaction) {
-            await Payment.findByIdAndDelete(newPayment._id);
-            return res.status(500).json({ success: false, message: 'Error creating payment. Transaction failed.' });
-        } else {
+    
+            // Update the payment status to 'Completed'
             newPayment.status = 'Completed';
-            newPayment.transactionId = transaction._id
-            await newPayment.save();
-            const UptdateReceiptNumber = await recieptNumberModel.findOne();
-            if (UptdateReceiptNumber) {
-                UptdateReceiptNumber.paymentReceiptNumber.lastNumber = receiptNumber;
-                await UptdateReceiptNumber.save();
+            newPayment.transactionId = transaction._id;
+            await newPayment.save({ session });
+    
+            // Update the receipt number
+            if (receiptNumber) {
+                const updateReceiptNumber = await recieptNumberModel.findOne().session(session);
+                if (updateReceiptNumber) {
+                    updateReceiptNumber.paymentReceiptNumber.lastNumber = receiptNumber;
+                    await updateReceiptNumber.save({ session });
+                }
             }
+    
+            // Commit the transaction
+            await session.commitTransaction();
+            session.endSession();
+    
+            return res.status(201).json({
+                success: true,
+                message: 'Payment created successfully.',
+                payment: newPayment
+            });
+    
+        } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
+    console.log(error)
+            return res.status(500).json({
+                success: false,
+                message: 'An error occurred while creating the payment.',
+                error: error.message
+            });
         }
-
-        return res.status(201).json({
-            success: true,
-            message: 'Payment created successfully.',
-            payment: newPayment
-        });
-
-    } catch (error) {
-        console.log(error)
-        return res.status(500).json({
-            error,
-            success: false,
-            message: 'An error occurred while creating the payment.'
-        });
-    }
-});
+    });
 
 router.put('/edit-payment/:paymentId', async (req, res) => {
     try {
@@ -142,7 +143,7 @@ router.put('/edit-payment/:paymentId', async (req, res) => {
         const existingPayment = await paymentModel.findById(paymentId);
     if (!existingPayment) throw new Error('Payment not found');
 
-    const { items, date, accountId, categoryId, paymentType, memberId, otherRecipient } = updatedData;
+    const { items, date, accountId, categoryId, paymentType,paymentTo } = updatedData;
     const newTotal = items.reduce((acc, item) => acc + Number(item.amount||0), 0);
     if (newTotal <= 0) throw new Error('Invalid total amount');
 
@@ -152,8 +153,7 @@ router.put('/edit-payment/:paymentId', async (req, res) => {
     existingPayment.accountId = accountId;
     existingPayment.categoryId = categoryId._id;
     existingPayment.paymentType = paymentType;
-    existingPayment.memberId = memberId || null;
-    existingPayment.otherRecipient = memberId ? null : otherRecipient;
+    existingPayment.paymentTo = paymentTo
 
 
     // Save the updated payment
@@ -185,29 +185,48 @@ await existingPayment.save();
 router.put('/reject-payment/:paymentId', async (req, res) => {
     try {
         const { paymentId } = req.params;
+        const { rejectionReason } = req.body;
 
-        // Edit the payment
+        // Validate rejection reason
+        if (!rejectionReason || typeof rejectionReason !== 'string') {
+            return res.status(400).json({
+                success: false,
+                message: 'Rejection reason is required and must be a string.',
+            });
+        }
+
+        // Find payment by ID
         const existingPayment = await paymentModel.findById(paymentId);
-    if (!existingPayment) throw new Error('Payment not found');
+        if (!existingPayment) {
+            return res.status(404).json({
+                success: false,
+                message: 'Payment not found.',
+            });
+        }
 
+        // Update payment status and reason
+        existingPayment.status = 'Rejected';
+        existingPayment.rejectionReason = rejectionReason;
 
-    existingPayment.status = 'Rejected';
+        // Delete the associated debit transaction
+        const deleteResult = await deleteDebitTransaction(existingPayment.transactionId);
+        if (!deleteResult) {
+            return res.status(500).json({
+                success: false,
+                message: 'Error in rejecting payment. Please try again later.',
+            });
+        }
 
+        // Save the updated payment
+        await existingPayment.save();
 
-    await deleteDebitTransaction(existingPayment.transactionId);
-if(!deleteDebitTransaction){
-    res.status(500).json({
-        success: false,
-        message: 'Error in rejecting. try later.',
-        error: deleteDebitTransaction,
-    });
-}
-await existingPayment.save();
+        // Respond with success
         res.status(200).json({
             success: true,
-            message: 'Payment and rejection updated successfully.',
+            message: 'Payment rejection updated successfully.',
         });
     } catch (error) {
+        console.error('Error in rejecting payment:', error);
         res.status(500).json({
             success: false,
             message: 'An error occurred while updating the payment.',
@@ -238,7 +257,7 @@ router.get('/get-payment/number', async (req, res) => {
 router.get('/get-payment/:paymentId', async (req, res) => {
     try {
         const { paymentId } = req.params;
-        const payment = await paymentModel.findById(paymentId).populate('categoryId memberId otherRecipient');
+        const payment = await paymentModel.findById(paymentId).populate('categoryId');
         if (!payment) throw new Error('Payment not found');
         res.status(200).json({ success: true, payment });
     } catch (error) {
@@ -254,7 +273,7 @@ router.get('/get/payments',async(req,res)=>{
     try {
         const payments = await paymentModel.find({}).sort({
             createdAt: -1,
-        }).populate('categoryId memberId otherRecipient');
+        }).populate('categoryId');
         res.status(200).json({ success: true, payments });
     } catch (error) {
         console.log(error)

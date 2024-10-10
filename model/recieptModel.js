@@ -30,6 +30,9 @@ const receiptSchema = new mongoose.Schema({
         default: 'Pending',
         required: true
     },
+    rejectionReason:{
+        type: String, 
+    },
     recieptType: {
         type: String,
         enum: ['Online', 'Cash'], // Type of receipt: Online or Cash

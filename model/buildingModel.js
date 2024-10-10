@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 const rentCollectionSchema = new mongoose.Schema({
     period: { type: String, required: true },
     amount: { type: Number, required: true },
+    PaymentAmount: { type: Number },
     date: {
       type: Date,
       default: Date.now
@@ -12,6 +13,7 @@ const rentCollectionSchema = new mongoose.Schema({
     days: { type: Number },
     deductAmount: { type: Number } 
   },
+  advanceDeduction: { type: Number, default: 0 },
   accountId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'bank', 
@@ -69,6 +71,10 @@ const tenantSchema = new mongoose.Schema({
     shop:{type:String},
     rent: { type: Number, required: true },
     deposit: { type: Number, required: true },
+    advancePayment:{
+      type: Number,
+      default: 0,
+    },
     depositStatus: { type: String, enum: ['Pending', 'Paid', 'ReturnPending', 'Returned'], default: 'Pending' },
     status: { type: String, enum: ['active','rejected', 'inactive'], default: 'active' },
     rentCollection: [rentCollectionSchema],

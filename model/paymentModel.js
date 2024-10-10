@@ -45,16 +45,8 @@ const paymentSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'transaction', // Reference to the transaction associated with the payment (if applicable)
 },
-    memberId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'member', // Reference to the member receiving the payment (if applicable)
-        required: function() { return !this.otherRecipient; } 
-    },
-    otherRecipient: {
-        name: {
-            type: String,
-            required: function() { return !this.memberId; } 
-        },
+    paymentTo: {
+        type: String,
     },
     receiptNumber: {
         type: String,

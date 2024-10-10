@@ -33,37 +33,14 @@ export const collectRent = async () => {
             continue;
           }
 
-          let amountDue;
+          let amountDue = activeContract.rent;
 
-          // Check if firstRent needs to be applied
-          if (activeContract.firstRent > 0) {
-            // Deduct firstRent from the amount due if it hasn't been applied yet
-            amountDue = activeContract.firstRent;
-            // Reset firstRent after applying it
-            activeContract.firstRent = 0;
-          } else {
-            amountDue = activeContract.rent;
-          }
-
-          // Check if there's an advance payment
-          if (activeContract.advancePayment && activeContract.advancePayment > 0) {
-            if (activeContract.advancePayment >= amountDue) {
-              // Full payment from advance
-              activeContract.advancePayment -= amountDue;
-              amountDue = 0;
-            } else {
-              // Partial payment from advance
-              amountDue -= activeContract.advancePayment;
-              activeContract.advancePayment = 0;
-            }
-          }
 
           const rentCollection = {
             period: period,
             amount: amountDue,
-            status: amountDue === 0 ? 'Paid' : 'Pending',
-            paymentDate: amountDue === 0 ? today : null, // Mark as paid if fully covered by advance or firstRent
-          };
+            status: 'Pending',
+         };
 
           activeContract.rentCollection.push(rentCollection);
 
@@ -93,7 +70,7 @@ const sendWhatsapp = async (rentCollection, tenant,room,building) => {
         WHATSAPP_API_URL,
         {
             messaging_product: 'whatsapp',
-            to: `91${tenant.number}`,
+            to: `${tenant.number}`,
             type: 'template',
             template: {
                 name: 'rent_collection',

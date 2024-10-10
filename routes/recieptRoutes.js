@@ -102,7 +102,7 @@ router.post('/create-reciept', async (req, res) => {
         const transaction = await creditAccount(accountId, amount, description, category);
 
         if (!transaction) {
-            await Payment.findByIdAndDelete(newReciept._id);
+            await recieptModel.findByIdAndDelete(newReciept._id);
             return res.status(500).json({ success: false, message: 'Error creating payment. Transaction failed.' });
         } else {
             newReciept.status = 'Completed';

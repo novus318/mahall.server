@@ -110,7 +110,7 @@ const sendWhatsAppMessage = async (house,month) => {
         );
         console.log('WhatsApp message sent successfully:', response.data);
     } catch (error) {
-        console.error('Error sending WhatsApp message:', error.response);
+        console.error('Error in sending WhatsApp message:', error.response);
     }
 };
 

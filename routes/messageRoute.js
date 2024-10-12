@@ -2,11 +2,14 @@ import express  from "express";
 import messageModel from "../model/messageModel.js";
 import dotenv from 'dotenv'
 import axios from "axios";
+import memberModel from "../model/memberModel.js";
 
 
 const router=express.Router()
 dotenv.config({ path: '../.env' })
 const ACCESS_TOKEN = process.env.WHATSAPP_TOKEN;
+const WHATSAPP_MEDIA_UPLOAD_URL = process.env.WHATSAPP_MEDIA_UPLOAD_URL;
+const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL;
 
 const downloadMedia = async (Id) => {
   const url = `https://graph.facebook.com/v16.0/${Id}`;  // WhatsApp media URL
@@ -241,6 +244,109 @@ router.get('/messages/count', async (req, res) => {
     });
   }
 })
+
+const sendMessageToMember = async (member, newMessage, mediaId, fileType) => {
+  try {
+    let messageData = {
+      messaging_product: 'whatsapp',
+      to: member.whatsappNumber,
+    };
+
+    // Check if mediaId and fileType are provided
+    if (mediaId && fileType) {
+      // Modify the message data based on the file type
+      if (fileType.startsWith('audio')) {
+        messageData.type = 'audio';
+        messageData.audio = {
+          id: mediaId,
+          caption: newMessage || '',
+        };
+      } else if (fileType.startsWith('image')) {
+        messageData.type = 'image';
+        messageData.image = {
+          id: mediaId,
+          caption: newMessage || '',
+        };
+      } else if (fileType.startsWith('video')) {
+        messageData.type = 'video';
+        messageData.video = {
+          id: mediaId,
+          caption: newMessage || '',
+        };
+      } else {
+        messageData.type = 'document';
+        messageData.document = {
+          id: mediaId,
+          filename: selectedFile.name,
+          caption: newMessage || '',
+        };
+      }
+    } else {
+      // If no media, send a plain text message
+      messageData.type = 'text';
+      messageData.text = {
+        body: newMessage,
+      };
+    }
+
+    const response = await axios.post(WHATSAPP_API_URL, messageData, {
+      headers: {
+        Authorization: `Bearer ${ACCESS_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.status === 200) {
+      console.log(`Message sent successfully to ${member.name}`,);
+      return { success: true, member: member.name };
+    }
+  } catch (error) {
+    console.error(`Failed to send message to ${member.name}:`, error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const lastExecution = {}; // In-memory store to track last execution date per user
+
+router.post('/bulk/message', async (req, res) => {
+  const { members, message, mediaId, type, userId } = req.body; // Assume userId is provided in the request body
+
+  // Check if the user has already sent a message today
+  const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
+  if (lastExecution[userId] === today) {
+    return res.status(429).json({ success: false, message: 'Messages can only be sent once per day' });
+  }
+
+  const membersDetails = await memberModel.find({ _id: { $in: members } });
+
+  // Send the response immediately
+  res.json({ success: true, message: 'Messages are being sent' });
+
+  // Update the last execution date for the user
+  lastExecution[userId] = today;
+
+  // Process messages in the background
+  (async () => {
+    const results = [];
+    for (const member of membersDetails) {
+      try {
+        const result = await sendMessageToMember(member, message, mediaId, type);
+        results.push({ memberId: member._id, success: true, result });
+      } catch (error) {
+        results.push({ memberId: member._id, success: false, error });
+      }
+
+      // Add a delay between each message
+      await delay(1500);
+    }
+    console.log("Bulk message sending results:");
+  })();
+});
+
+
 
 
 

@@ -24,8 +24,8 @@ const bankSchema = new mongoose.Schema({
     },
     accountType: {
       type: String,
-      enum: ['bank', 'cash'], // Possible values: 'bank' or 'cash'
-      required: true // Account type is required
+      enum: ['bank', 'cash','deposit'], 
+      required: true 
     },
     primary: {
       type: Boolean,

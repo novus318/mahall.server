@@ -12,7 +12,7 @@ const calculatePercentageChange = (current, previous) => {
 router.get('/get-assets', async(req, res) => {
     try{
         // Fetch all assets from the database
-        const assets = await BankModel.find();
+        const assets = await BankModel.find({ accountType: { $in: ['bank', 'cash'] } });
 
         const totalBalance = assets.reduce((sum, asset) => sum + asset.balance, 0);
         res.status(200).json({ success: true, asset:totalBalance });
@@ -34,13 +34,13 @@ router.get('/get-expenses', async (req, res) => {
 
         // Fetch all debit transactions for this month
         const currentMonthExpenses = await transactionModel.aggregate([
-            { $match: { type: 'Debit', category: { $ne: 'Self-Transfer' }, date: { $gte: startOfMonth, $lte: now } } },
+            { $match: { type: 'Debit',  category: { $nin: ['Self-Transfer', 'building deposit'] }, date: { $gte: startOfMonth, $lte: now } } },
             { $group: { _id: null, total: { $sum: '$amount' } } }
         ]);
 
         // Fetch all debit transactions for the last month, excluding 'Self-Transfer' category
         const lastMonthExpenses = await transactionModel.aggregate([
-            { $match: { type: 'Debit', category: { $ne: 'Self-Transfer' }, date: { $gte: startOfLastMonth, $lte: endOfLastMonth } } },
+            { $match: { type: 'Debit',  category: { $nin: ['Self-Transfer', 'building deposit'] }, date: { $gte: startOfLastMonth, $lte: endOfLastMonth } } },
             { $group: { _id: null, total: { $sum: '$amount' } } }
         ]);
 
@@ -65,55 +65,43 @@ router.get('/get-expenses', async (req, res) => {
     }
 });
 
-router.get('/get-donations', async (req, res) => {
+router.get('/get-incomes', async (req, res) => {
     try {
-        const startOfMonth = new Date();
-        startOfMonth.setDate(1);
-        startOfMonth.setHours(0, 0, 0, 0);
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
-        const endOfMonth = new Date();
-        endOfMonth.setHours(23, 59, 59, 999);
-
-        const totalDonations = await transactionModel.aggregate([
-            {
-                $match: {
-                    category: 'Donation',
-                    createdAt: {
-                        $gte: startOfMonth,
-                        $lte: endOfMonth
-                    }
-                }
-            },
-            {
-                $group: {
-                    _id: null,
-                    totalCredit: {
-                        $sum: {
-                            $cond: [{ $eq: ["$type", "Credit"] }, "$amount", 0]
-                        }
-                    },
-                    totalDebit: {
-                        $sum: {
-                            $cond: [{ $eq: ["$type", "Debit"] }, "$amount", 0]
-                        }
-                    }
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    totalDonations: { $subtract: ["$totalCredit", "$totalDebit"] }
-                }
-            }
+        // Fetch all debit transactions for this month
+        const currentMonthExpenses = await transactionModel.aggregate([
+            { $match: { type: 'Credit', category: { $nin: ['Self-Transfer', 'building deposit'] }, date: { $gte: startOfMonth, $lte: now } } },
+            { $group: { _id: null, total: { $sum: '$amount' } } }
         ]);
 
-        const total = totalDonations.length > 0 ? totalDonations[0].totalDonations : 0;
+        // Fetch all debit transactions for the last month, excluding 'Self-Transfer' category
+        const lastMonthExpenses = await transactionModel.aggregate([
+            { $match: { type: 'Credit', category: { $nin: ['Self-Transfer', 'building deposit'] }, date: { $gte: startOfLastMonth, $lte: endOfLastMonth } } },
+            { $group: { _id: null, total: { $sum: '$amount' } } }
+        ]);
 
-        res.status(200).json({ success: true, totalDonations: total });
+        const currentMonthTotal = currentMonthExpenses.length ? currentMonthExpenses[0].total : 0;
+        const lastMonthTotal = lastMonthExpenses.length ? lastMonthExpenses[0].total : 0;
+
+        // Calculate the percentage change
+        const percentageChange = calculatePercentageChange(currentMonthTotal, lastMonthTotal);
+
+        res.status(200).json({
+            success: true,
+            currentMonthTotal,
+            lastMonthTotal,
+            percentageChange
+        });
     } catch (error) {
         res.status(500).json({
+            error,
             success: false,
-            message: 'Error getting total donations'
+            message: 'Error getting income'
         });
     }
 });
@@ -124,7 +112,7 @@ router.get('/get-transactions', async (req, res) => {
     try {
         const recentTransactions = await transactionModel.find({ category: { $ne: 'Self-Transfer' } })
         .sort({ createdAt: -1 })
-        .limit(50);
+        .limit(50).populate('accountId');
         res.status(200).json({ success: true, recentTransactions });
     }catch{
         res.status(500).json({
@@ -135,7 +123,7 @@ router.get('/get-transactions', async (req, res) => {
 })
 
 
-router.get('/get-donation-expense-trends', async (req, res) => {
+router.get('/get-income-expense-trends', async (req, res) => {
     try {
         const sixMonthsAgo = new Date();
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
@@ -157,7 +145,7 @@ router.get('/get-donation-expense-trends', async (req, res) => {
             {
                 $match: {
                     createdAt: { $gte: sixMonthsAgo },
-                    category: { $ne: "Self-Transfer" }
+                    category: { $nin: ['Self-Transfer', 'building deposit'] }
                 }
             },
             {
@@ -166,17 +154,11 @@ router.get('/get-donation-expense-trends', async (req, res) => {
                         year: { $year: "$createdAt" },
                         month: { $month: "$createdAt" }
                     },
-                    donation: {
+                    income: {
                         $sum: {
                             $cond: [
-                                { $eq: ["$category", "Donation"] },
-                                {
-                                    $cond: [
-                                        { $eq: ["$type", "Debit"] }, 
-                                        { $multiply: ["$amount", -1] }, 
-                                        "$amount"
-                                    ]
-                                },
+                                { $eq: ["$type", "Credit"] },
+                                "$amount",
                                 0
                             ]
                         }
@@ -207,7 +189,7 @@ router.get('/get-donation-expense-trends', async (req, res) => {
                     },
                     year: "$_id.year",
                     monthNumber: "$_id.month",
-                    donation: 1,
+                    income: 1,
                     expense: 1
                 }
             }
@@ -218,7 +200,7 @@ router.get('/get-donation-expense-trends', async (req, res) => {
             const trend = trends.find(t => t.year === year && t.monthNumber === month) || {};
             return {
                 month: `${["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][month]}`,
-                donation: trend.donation || 0,
+                income: trend.income || 0,
                 expense: trend.expense || 0
             };
         });

@@ -135,6 +135,22 @@ router.put('/edit/:id', async (req, res) => {
     }
 });
 
+router.get('/get-all', async (req, res) => {
+  try {
+      // Fetch all bank or cash accounts
+      const accounts = await BankModel.find().sort({
+          createdAt: -1,
+      });
+
+      // Send a success response
+      res.status(200).send({ success: true, accounts });
+  } catch (error) {
+      // Handle any errors that occur
+      res.status(500).send({ success: false, message: 'Server Error',
+          error: error.message,
+      });
+  }
+})
 
 router.get('/get', async (req, res) => {
     try {
@@ -185,7 +201,7 @@ router.post('/inter-account-transfer', async (req, res) => {
       type: 'Debit',
       amount: parsedAmount,
       accountId: fromAccount._id,
-      description: `Account Deposited to ${toAccount.name}`,
+      description: `Account Deposited from ${fromAccount.name} to ${toAccount.name}`,
       category: 'Self-Transfer',
       openingBalance: Number(debitAccount.balance),
       closingBalance: Number(debitAccount.balance) - parsedAmount

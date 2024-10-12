@@ -18,7 +18,7 @@ router.get('/get/self-transfer', async (req, res) => {
   
   router.get('/recent/transactions', async (req, res) => {
     try {
-      const transactions = await transactionModel.find().sort({ createdAt: -1 }).limit(250);
+      const transactions = await transactionModel.find().sort({ createdAt: -1 }).limit(250).populate('accountId');
       
       res.status(200).send({ success: true, data: transactions });
     } catch (error) {
@@ -86,6 +86,7 @@ router.get('/get/self-transfer', async (req, res) => {
         accountName: transaction.accountId.name,
         amount: transaction.amount,
         Balance:transaction.closingBalance,
+        reference:transaction?.reference || null
       }));
   
       // Convert maps to arrays

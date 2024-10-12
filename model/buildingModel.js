@@ -42,13 +42,6 @@ const rentCollectionSchema = new mongoose.Schema({
         enum: ['Cash', 'Online'], 
         default: 'Cash'
     },
-    deduction: { 
-      type: Number, 
-      default: 0 
-  },
-  deductionReason: { 
-      type: String 
-  },
     paymentDate: { 
         type: Date, 
         default: Date.now 

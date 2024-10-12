@@ -7,6 +7,7 @@ import recieptModel from "../model/recieptModel.js";
 import recieptNumberModel from "../model/recieptNumberModel.js";
 import { NextReceiptNumber } from "../functions/recieptNumber.js";
 import { sendRentConfirmWhatsapp } from "../functions/generateRent.js";
+import BankModel from "../model/BankModel.js";
 const router = express.Router()
 
 
@@ -215,7 +216,7 @@ router.post('/pay-deposit/:buildingID/:roomId/:contractId', async (req, res) => 
 
   try {
     const { buildingID, roomId,contractId } = req.params;
-    const { status, paymentMethod, accountId } = req.body;
+    const { status, paymentMethod } = req.body;
 
     // Find the building by ID
     const building = await buildingModel.findById(buildingID).session(session); // Use session with queries
@@ -248,7 +249,11 @@ router.post('/pay-deposit/:buildingID/:roomId/:contractId', async (req, res) => 
       };
 
       activeContract.depositCollection.push(depositTransaction);
-
+      const depositAccount = await BankModel.findOne({ accountType: 'deposit' }).session(session);
+      if (!depositAccount) {
+        throw new Error('Deposit account not found');
+      }
+      const accountId = depositAccount._id;
       const ref = `/rent/room-details/${building._id}/${roomId}/${contractId}`;
       const description = `Deposit from ${activeContract.tenant.name} for building ${building.buildingID} room ${room.roomNumber}`;
       const category = 'building deposit';
@@ -363,39 +368,30 @@ router.post('/pay-advance/:buildingID/:roomId/:contractId', async (req, res) => 
 );
 
 router.post('/return-deposit/:buildingID/:roomId/:contractId', async (req, res) => {
+  const session = await mongoose.startSession(); // Start a session for transaction
+  session.startTransaction(); // Start the transaction
+
   try {
     const { buildingID, roomId, contractId } = req.params;
-    const { status, accountId, amount, deduction, receiptId } = req.body;
-    const deductAmount = Number(deduction) || 0;
+    const { status, paymentMethod } = req.body;
 
     // Validate inputs
-    if (!mongoose.Types.ObjectId.isValid(buildingID) || !mongoose.Types.ObjectId.isValid(roomId) || !mongoose.Types.ObjectId.isValid(contractId)) {
-      return res.status(400).json({ message: 'Invalid IDs' });
-    }
-    if (!amount || isNaN(amount) || amount <= 0) {
-      return res.status(400).json({ message: 'Invalid amount' });
-    }
-    if (!accountId) {
-      return res.status(400).json({ message: 'Account ID is required' });
+    if (!mongoose.Types.ObjectId.isValid(buildingID) || 
+        !mongoose.Types.ObjectId.isValid(roomId) || 
+        !mongoose.Types.ObjectId.isValid(contractId)) {
+      return res.status(400).json({ success: false, message: 'Invalid building, room, or contract ID' });
     }
 
     // Find the building by ID
-    const building = await buildingModel.findById(buildingID);
+    const building = await buildingModel.findById(buildingID).session(session);
     if (!building) {
-      return res.status(404).json({ message: 'Building not found' });
+      return res.status(404).json({ success: false, message: 'Building not found' });
     }
 
     // Find the room by ID
     const room = building.rooms.id(roomId);
     if (!room) {
-      return res.status(404).json({ message: 'Room not found' });
-    }
-let receiptCategory
-    if(deductAmount > 0){
-      receiptCategory = await recieptCategoryModel.findById(receiptId);
-    if (!receiptCategory && deductAmount > 0) {
-      return res.status(404).json({ message: 'Receipt category not found' });
-    }
+      return res.status(404).json({ success: false, message: 'Room not found' });
     }
 
     // Find the current active contract
@@ -403,102 +399,65 @@ let receiptCategory
       contract => contract._id.toString() === contractId
     );
     if (!activeContract) {
-      return res.status(404).json({ message: 'No contract found' });
+      return res.status(404).json({ success: false, message: 'No active contract found' });
     }
 
     const ref = `/rent/room-details/${building._id}/${roomId}/${contractId}`;
     if (status === 'Returned') {
       activeContract.depositStatus = 'Returned';
       activeContract.status = 'inactive';
-      activeContract.to = Date.now()
+      activeContract.to = Date.now();
 
       // Create a new deposit transaction
       const depositTransaction = {
-        amount,
+        amount: activeContract.deposit,
         transactionType: 'Returned',
-        deduction: deductAmount,
-        deductionReason: deductAmount > 0 ? receiptCategory.name : '',
+        paymentMethod: paymentMethod || 'Cash',
       };
       activeContract.depositCollection.push(depositTransaction);
 
-      let transaction;
-      if (deductAmount > 0) {
-        const otherRecipient = {
-          name: activeContract.tenant.name,
-          number: activeContract.tenant.number
-        };
-        const receiptNumber = await recieptNumberModel.findOne();
-
-        if (receiptNumber && receiptNumber.receiptReceiptNumber) {
-          const lastNumber = receiptNumber.receiptReceiptNumber.lastNumber;
-          const newNumber = await NextReceiptNumber(lastNumber);
-
-          const newReciept = new recieptModel({
-            amount: deductAmount,
-            date: Date.now(),
-            description: `Deducted from deposit of ${activeContract.tenant.name} building ${building.buildingID} room ${room.roomNumber} for ${receiptCategory.name}`,
-            accountId,
-            categoryId: receiptCategory._id,
-            status: 'Pending',
-            recieptType: 'Cash',
-            memberId: null,
-            otherRecipient: otherRecipient,
-            receiptNumber: newNumber
-          });
-
-          await newReciept.save();
-
-          try {
-            transaction = await creditAccount(accountId, deductAmount, newReciept.description, receiptCategory.name,ref);
-            if (!transaction) throw new Error('Transaction failed');
-
-            newReciept.status = 'Completed';
-            newReciept.transactionId = transaction._id;
-            await newReciept.save();
-
-            // Update receipt number
-            const updatedReceiptNumber = await recieptNumberModel.findOne();
-            if (updatedReceiptNumber) {
-              updatedReceiptNumber.receiptReceiptNumber.lastNumber = newNumber;
-              await updatedReceiptNumber.save();
-            }
-          } catch (error) {
-            await recieptModel.findByIdAndDelete(newReciept._id);
-            return res.status(500).json({ success: false, message: 'Error creating payment. Transaction failed.' });
-          }
-        }
+      // Find the account to debit
+      const withdrawAccount = await BankModel.findOne({ accountType: 'deposit' }).session(session);
+      if (!withdrawAccount) {
+        throw new Error('Deposit account not found');
       }
-
+      const accountId = withdrawAccount._id;
       const description = `Returned deposit for ${activeContract.tenant.name} building ${building.buildingID} room ${room.roomNumber}`;
       const category = 'building deposit';
 
-      try {
-        await debitAccount(accountId, activeContract.deposit, description, category, ref);
-      } catch (error) {
-        if (deductAmount > 0 && transaction) {
-          await deleteCreditTransaction(transaction._id);
-        }
-        return res.status(500).json({ success: false, message: 'Debit transaction failed. Deposit process rolled back.' });
-      }
+      // Debit the account
+      await debitAccount(accountId, activeContract.deposit, description, category, ref);
     } else {
       activeContract.depositStatus = 'ReturnPending';
     }
 
-    await building.save();
+    // Save the changes
+    await building.save({ session });
+
+    // Commit the transaction
+    await session.commitTransaction();
+    session.endSession();
 
     res.status(200).json({
       success: true,
       message: 'Deposit returned successfully',
     });
+
   } catch (error) {
+    // Rollback the transaction
+    await session.abortTransaction();
+    session.endSession();
     console.error('Error:', error);
     res.status(500).json({
       success: false,
       message: 'Error updating deposit status',
       error: error.message
     });
+  } finally {
+    session.endSession(); // Make sure the session is closed
   }
 });
+
 
 router.get('/get-buildings', async (req, res) => {
 

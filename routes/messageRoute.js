@@ -8,7 +8,6 @@ import memberModel from "../model/memberModel.js";
 const router=express.Router()
 dotenv.config({ path: '../.env' })
 const ACCESS_TOKEN = process.env.WHATSAPP_TOKEN;
-const WHATSAPP_MEDIA_UPLOAD_URL = process.env.WHATSAPP_MEDIA_UPLOAD_URL;
 const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL;
 
 const downloadMedia = async (Id) => {

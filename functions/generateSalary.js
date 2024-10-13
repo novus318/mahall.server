@@ -44,6 +44,11 @@ export const generateMonthlySalaries = async () => {
 
 export const sendWhatsAppSalary = async (salary) => {
     try {
+        const netPay = salary.netPay;
+
+// Format netPay to two decimal places and add comma separators
+const formattedNetPay = netPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
         const month = salary.salaryPeriod?.startDate?.toLocaleString('default', { month: 'long' });
         const response = await axios.post(
             WHATSAPP_API_URL,
@@ -62,7 +67,7 @@ export const sendWhatsAppSalary = async (salary) => {
                             parameters: [
                                 { type: 'text', text: salary.staffId.name },     
                                 { type: 'text', text: month },   
-                                { type: 'text', text: salary.netPay},        
+                                { type: 'text', text: formattedNetPay},        
                             ]
                         },
                         {

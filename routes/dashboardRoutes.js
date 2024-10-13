@@ -14,7 +14,7 @@ router.get('/get-assets', async(req, res) => {
         // Fetch all assets from the database
         const assets = await BankModel.find({ accountType: { $in: ['bank', 'cash'] } });
 
-        const totalBalance = assets.reduce((sum, asset) => sum + asset.balance, 0);
+        const totalBalance = assets.reduce((sum, asset) => sum + asset.balance, 0).toFixed(2);
         res.status(200).json({ success: true, asset:totalBalance });
     }catch(error){
         res.status(500).json({
@@ -52,8 +52,8 @@ router.get('/get-expenses', async (req, res) => {
 
         res.status(200).json({
             success: true,
-            currentMonthTotal,
-            lastMonthTotal,
+            currentMonthTotal:currentMonthTotal.toFixed(2),
+            lastMonthTotal:lastMonthTotal.toFixed(2),
             percentageChange
         });
     } catch (error) {
@@ -86,15 +86,15 @@ router.get('/get-incomes', async (req, res) => {
         ]);
 
         const currentMonthTotal = currentMonthExpenses.length ? currentMonthExpenses[0].total : 0;
-        const lastMonthTotal = lastMonthExpenses.length ? lastMonthExpenses[0].total : 0;
+        const lastMonthTotal = lastMonthExpenses.length ? lastMonthExpenses[0].total : 0;  
 
         // Calculate the percentage change
         const percentageChange = calculatePercentageChange(currentMonthTotal, lastMonthTotal);
 
         res.status(200).json({
             success: true,
-            currentMonthTotal,
-            lastMonthTotal,
+            currentMonthTotal:currentMonthTotal.toFixed(2),
+            lastMonthTotal:lastMonthTotal.toFixed(2),
             percentageChange
         });
     } catch (error) {
@@ -200,8 +200,9 @@ router.get('/get-income-expense-trends', async (req, res) => {
             const trend = trends.find(t => t.year === year && t.monthNumber === month) || {};
             return {
                 month: `${["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][month]}`,
-                income: trend.income || 0,
-                expense: trend.expense || 0
+                income: (trend.income || 0).toFixed(2),
+                expense: (trend.expense || 0).toFixed(2)
+                
             };
         });
 
@@ -246,7 +247,8 @@ router.get('/get-expense-categories', async (req, res) => {
         { asset: "Rent", amount: result.find(r => r._id.type === 'Credit' && r._id.category === 'Rent')?.totalAmount || 0, fill: '#0088FE' },
         { asset: "Donation", amount: result.find(r => r._id.type === 'Credit' && r._id.category === 'Donation')?.totalAmount || 0, fill: '#dba054' },
         { asset: "Other Expenses", amount: result.find(r => r._id.type === 'Debit' && r._id.category === 'Other Expenses')?.totalAmount || 0, fill: '#FFBB28' },
-      ];
+      ]; 
+    
       
   
       res.status(200).json(response);

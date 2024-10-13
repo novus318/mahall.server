@@ -12,16 +12,18 @@ import salaryModel from "../model/salaryModel.js";
 const router=express.Router()
 
 router.get('/dashboard', async (req, res) => {
-    const assets = await BankModel.find();
+    const assets = await BankModel.find({ accountType: { $in: ['bank', 'cash'] } });
     const members = await memberModel.find().countDocuments();
     const staffs = await staffModel.find().countDocuments();
     const totalBalance = assets.reduce((sum, asset) => sum + asset.balance, 0);
+    const formattedTotalBalance = totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
     const data = [
         { title: "Tuition Fees", link: 'Tution'},
         { title: "Rent" ,link: 'rent'},
         { title: "Payments", link: 'Payments'},
         { title: "Receipts",  link: 'Reciepts'},
-        { title: "Accounts", value: `₹${totalBalance}`, link: 'Accounts'},
+        { title: "Accounts", value: `₹${formattedTotalBalance}`, link: 'Accounts'},
         { title: "Members", value: members ,link: 'members'},
         { title: "Staff",  value: staffs,link: 'staff'},
       ]

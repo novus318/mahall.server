@@ -39,7 +39,7 @@ app.use(morgan('dev'))
 //database configcon
 connectDB();
 
- //generateMonthlyCollections()
+ // generateMonthlyCollections()
 // generateMonthlySalaries()
 // collectRent()
 

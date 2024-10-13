@@ -99,7 +99,8 @@ router.post('/create-reciept', async (req, res) => {
         await newReciept.save();
 
         const category = categoryId.name;
-        const transaction = await creditAccount(accountId, amount, description, category);
+        const recieptDescription =`Receipt for ${category} by ${recieptType}-${receiptNumber}`
+        const transaction = await creditAccount(accountId, amount, recieptDescription, category);
 
         if (!transaction) {
             await recieptModel.findByIdAndDelete(newReciept._id);

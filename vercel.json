@@ -12,21 +12,16 @@
         "dest": "/"
       },
       { "src": "/cron/cron1", "dest": "./cron/cron1.js" },
-      { "src": "/cron/cron2", "dest": "./cron/cron2.js" },
-      { "src": "/cron/cron3", "dest": "./cron/cron3.js" }
+      { "src": "/cron/cron2", "dest": "./cron/cron2.js" }
     ],
     "crons": [
       {
         "path": "/cron/cron1",
-        "schedule": "0 10 1 * *"
+        "schedule": "15 6 2 * *"
       },
       {
         "path": "/cron/cron2",
-        "schedule": "40 10 2 * *"
-      },
-      {
-        "path": "/cron/cron3",
-        "schedule": "0 10 3 * *"
+        "schedule": "0 10 2 * *"
       }
     ]
   }

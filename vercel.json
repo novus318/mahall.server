@@ -21,7 +21,7 @@
       },
       {
         "path": "/cron/cron2",
-        "schedule": "0 10 3 * *"
-      }
+        "schedule": "50 12 3 * *"
+    }    
     ]
   }

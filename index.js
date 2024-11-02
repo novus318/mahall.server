@@ -50,9 +50,11 @@ cron.schedule('0 10 1 * *', async () => {
   } catch (error) {
     console.error('Error in generateMonthlyCollections:', error);
   }
+},
+{
+  timezone: "Asia/Kolkata" 
 });
 
-// Schedule generateMonthlySalaries() for the 2nd of every month at 10 AM
 cron.schedule('0 10 2 * *', async () => {
   try {
     await generateMonthlySalaries();
@@ -60,6 +62,9 @@ cron.schedule('0 10 2 * *', async () => {
   } catch (error) {
     console.error('Error in generateMonthlySalaries:', error);
   }
+},
+{
+  timezone: "Asia/Kolkata"
 });
 
 // Schedule collectRent() for the 3rd of every month at 10 AM
@@ -70,7 +75,24 @@ cron.schedule('0 10 3 * *', async () => {
   } catch (error) {
     console.error('Error in collectRent:', error);
   }
+},
+{
+  timezone: "Asia/Kolkata" // Setting timezone to IST
 });
+
+
+cron.schedule('10 11 2 * *', async () => {
+  console.log("Running generateMonthlySalaries at", new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }));
+  try {
+    await generateMonthlySalaries();
+    console.log('generateMonthlySalaries executed successfully');
+  } catch (error) {
+    console.error('Error in generateMonthlySalaries:', error);
+  }
+}, {
+  timezone: "Asia/Kolkata" // Setting timezone to IST
+});
+
 app.get('/',(req,res)=>{
   res.send({
       message:'welcome to app itself working for you'

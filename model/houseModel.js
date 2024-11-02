@@ -5,7 +5,7 @@ const houseSchema = new mongoose.Schema({
    address: String,
    number: {
       type: String,
-      unique: true // This ensures the number is unique
+      unique: true 
    },
    panchayathNumber: {
       type: String,
@@ -19,7 +19,7 @@ const houseSchema = new mongoose.Schema({
    },
    collectionAmount: {
       type: Number,
-      default: 0 // You can set a default value if needed
+      default: 0
    },
    lastCollection: {
       type: Date,

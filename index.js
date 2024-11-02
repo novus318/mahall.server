@@ -81,25 +81,25 @@ cron.schedule('0 10 3 * *', async () => {
 });
 
 
-app.get('/',(req,res)=>{
+app.get('/server/api',(req,res)=>{
   res.send({
       message:'welcome to app itself working for you'
   })
 })
 
-app.use('/api/auth',authRoutes)
-app.use('/api/dashboard',dashboardRoutes)
-app.use('/api/house',houseRoutes)
-app.use('/api/member',memberRoutes)
-app.use('/api/account',bankRoutes)
-app.use('/api/staff',staffRoutes)
-app.use('/api/rent',buildingRoutes)
-app.use('/api/transactions',transactionRoutes)
-app.use('/api/pay',paymentRoutes)
-app.use('/api/reciept',recieptRoutes)
-app.use('/api/message',messageRoutes)
-app.use('/api/setting',settingRoutes)
-app.use('/api/reports',reportRoutes)
+app.use('/server/api/auth',authRoutes)
+app.use('/server/api/dashboard',dashboardRoutes)
+app.use('/server/api/house',houseRoutes)
+app.use('/server/api/member',memberRoutes)
+app.use('/server/api/account',bankRoutes)
+app.use('/server/api/staff',staffRoutes)
+app.use('/server/api/rent',buildingRoutes)
+app.use('/server/api/transactions',transactionRoutes)
+app.use('/server/api/pay',paymentRoutes)
+app.use('/server/api/reciept',recieptRoutes)
+app.use('/server/api/message',messageRoutes)
+app.use('/server/api/setting',settingRoutes)
+app.use('/server/api/reports',reportRoutes)
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

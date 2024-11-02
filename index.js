@@ -81,18 +81,6 @@ cron.schedule('0 10 3 * *', async () => {
 });
 
 
-cron.schedule('10 11 2 * *', async () => {
-  console.log("Running generateMonthlySalaries at", new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }));
-  try {
-    await generateMonthlySalaries();
-    console.log('generateMonthlySalaries executed successfully');
-  } catch (error) {
-    console.error('Error in generateMonthlySalaries:', error);
-  }
-}, {
-  timezone: "Asia/Kolkata" // Setting timezone to IST
-});
-
 app.get('/',(req,res)=>{
   res.send({
       message:'welcome to app itself working for you'

@@ -17,11 +17,11 @@
     "crons": [
       {
         "path": "/cron/cron1",
-        "schedule": "15 6 2 * *"
+        "schedule": "55 10 2 * *"
       },
       {
         "path": "/cron/cron2",
-        "schedule": "0 10 2 * *"
+        "schedule": "0 10 3 * *"
       }
     ]
   }

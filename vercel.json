@@ -10,18 +10,6 @@
       {
         "src": "/(.*)",
         "dest": "/"
-      },
-      { "src": "/cron/cron1", "dest": "./cron/cron1.js" },
-      { "src": "/cron/cron2", "dest": "./cron/cron2.js" }
-    ],
-    "crons": [
-      {
-        "path": "/cron/cron1",
-        "schedule": "20 7 2 * *"
-      },
-      {
-        "path": "/cron/cron2",
-        "schedule": "50 12 2 * *"
-    }    
+      }
     ]
   }

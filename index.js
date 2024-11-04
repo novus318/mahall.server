@@ -21,6 +21,9 @@ import recieptRoutes from './routes/recieptRoutes.js'
 import messageRoutes from './routes/messageRoute.js'
 import settingRoutes from './routes/settingRoutes.js'
 import reportRoutes from './routes/reportRoutes.js'
+import adminRoute from './routes/adminRoute.js'
+
+
 
 const app = express();
 const PORT = 8000;
@@ -100,6 +103,7 @@ app.use('/server/api/reciept',recieptRoutes)
 app.use('/server/api/message',messageRoutes)
 app.use('/server/api/setting',settingRoutes)
 app.use('/server/api/reports',reportRoutes)
+app.use('/server/api/admin',adminRoute)
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

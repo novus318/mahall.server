@@ -104,13 +104,14 @@ router.get('/get/payment/byDate', async (req, res) => {
 
 router.get('/get/members', async (req, res) => {
     try {
-        const houses = await houseModel.find();
+        const houses = await houseModel.find().populate('familyHead');
         const houseWithMembers = await Promise.all(
             houses.map(async (house) => {
               const members = await memberModel.find({ house: house._id });
       
               return {
                 house: house.name,
+                familyHead:house.familyHead.name,
                 totalMembers: members.length,
                houseNumber: house.number,
                 members,

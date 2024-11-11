@@ -1,1 +1,1 @@
-export const places = ["Kerala","UAE","Malaysia","Singapore","Kuwait","Saudi","Oman","Qatar"];
+export const places = ["Kerala","Soudi","Malaysia","UAE","Singapore","Qatar","Muskath","Kuwaith"];

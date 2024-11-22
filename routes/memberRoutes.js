@@ -1,6 +1,7 @@
 import express  from "express";
 import jwt from "jsonwebtoken";
 import memberModel from "../model/memberModel.js";
+import houseModel from "../model/houseModel.js";
 import mongoose from "mongoose";
 const router=express.Router()
 
@@ -79,30 +80,47 @@ router.post('/create', async (req, res) => {
 
   router.delete('/delete/:id', async (req, res) => {
     try {
-      const { id } = req.params;
-  
-      // Check if the provided ID is a valid MongoDB ObjectId
-      if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).json({ message: 'Invalid member ID.' });
-      }
-  
-      // Find the member by ID and delete it
-      const deletedMember = await memberModel.findByIdAndDelete(id);
-  
-      // Check if the member was found and deleted
-      if (!deletedMember) {
-        return res.status(404).json({ message: 'Member not found.' });
-      }
-  
-      // Send a success response with the deleted member information
-      res.status(200).json({
-        success: true,
-        message: 'Member deleted successfully.',
-      });
+        const { id } = req.params;
+
+        // Check if the provided ID is a valid MongoDB ObjectId
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: 'Invalid member ID.' });
+        }
+
+        // Find the member to check if they are the familyHead of any house
+        const member = await memberModel.findById(id).populate('house');
+
+        if (!member) {
+            return res.status(404).json({ message: 'Member not found.' });
+        }
+
+        // Check if the member is the familyHead of the house
+        const house = await houseModel.findOne({ familyHead: id });
+
+        if (house) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot delete member because they are the familyHead of a house. Update the house familyHead first.',
+                houseDetails: house
+            });
+        }
+
+        // If not a familyHead, proceed with deletion
+        const deletedMember = await memberModel.findByIdAndDelete(id);
+
+        res.status(200).json({
+            success: true,
+            message: 'Member deleted successfully.',
+            member: deletedMember,
+        });
     } catch (error) {
-      res.status(500).json({ message: 'An error occurred while deleting the member.', error: error.message });
+        res.status(500).json({ 
+            message: 'An error occurred while deleting the member.', 
+            error: error.message 
+        });
     }
-  });
+});
+
   
   
   router.put('/edit-member', async (req, res) => {

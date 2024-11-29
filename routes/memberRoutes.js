@@ -186,10 +186,19 @@ router.post('/create', async (req, res) => {
       }
   
       // Fetch all members with the specified house ID
-      const members = await memberModel.find({ house: pid }).populate('relation.member');
+      const members = await memberModel.find({ house: pid });
+
+      const populatedMembers = await Promise.all(
+        members.map(async (member) => {
+          if (member.relation && member.relation.member) {
+            await member.populate('relation.member');
+          }
+          return member;
+        })
+      );
   
       // Check if members are found
-      if (members.length === 0) {
+      if (populatedMembers.length === 0) {
         return res.status(404).json({ 
             success:false,
             message: 'No members found for this house' });
@@ -198,7 +207,7 @@ router.post('/create', async (req, res) => {
       // Send a success response with the members
       res.status(200).json(
         {success: true,
-        members,}
+        members:populatedMembers,}
       );
     } catch (error) {
       // Handle any errors that occur during the fetch process

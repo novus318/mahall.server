@@ -182,6 +182,7 @@ router.get('/messages', async (req, res) => {
       success: true
       ,messages});
   } catch (error) {
+    console.log(error)
     res.status(500).send({
       success: false
      , message: 'Server Error'

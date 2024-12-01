@@ -153,21 +153,32 @@ router.get('/get-all', async (req, res) => {
 })
 
 router.get('/get', async (req, res) => {
-    try {
-        // Fetch all bank or cash accounts
-        const accounts = await BankModel.find({ accountType: { $in: ['bank', 'cash'] } }).sort({
-            createdAt: -1,
-        });
+  try {
+      // Query the database for bank or cash accounts
+      const accounts = await BankModel.find({ accountType: { $in: ['bank', 'cash'] } })
+          .sort({ createdAt: -1 })
+          .limit(100); // Limit the number of results to prevent overloading
 
-        // Send a success response
-        res.status(200).send({ success: true, accounts });
-    } catch (error) {
-        // Handle any errors that occur
-        res.status(500).send({ success: false, message: 'Server Error',
-            error: error.message,
-        });
-    }
-})
+      // If no accounts are found, return an empty array
+      if (!accounts || accounts.length === 0) {
+          return res.status(404).send({
+              success: false,
+              message: 'No bank or cash accounts found.',
+          });
+      }
+
+      // Send a success response with the fetched accounts
+      res.status(200).send({
+          success: true,
+          data: accounts,
+      });
+  } catch (error) {
+      res.status(500).send({
+          success: false,
+          message: 'An error occurred while fetching accounts. Please try again later.',
+      });
+  }
+});
 
 router.post('/inter-account-transfer', async (req, res) => {
   const { fromAccount, toAccount, amount } = req.body;

@@ -177,9 +177,16 @@ router.get('/webhook', async (req, res) => {
 
 router.get('/messages', async (req, res) => {
   try {
-    const messages = await messageModel.find().sort({ createdAt: -1 });
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = 5; 
+    const messages = await messageModel.find()
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * pageSize)
+    .limit(pageSize);
+    const totalCount = await messageModel.countDocuments();
     res.json({
-      success: true
+      success: true,
+      totalCount: totalCount
       ,messages});
   } catch (error) {
     console.log(error)

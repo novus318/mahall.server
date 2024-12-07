@@ -46,42 +46,42 @@ connectDB();
 //  generateMonthlySalaries()
 // collectRent()
 
-cron.schedule('0 10 1 * *', async () => {
-  try {
-    await generateMonthlyCollections();
-    console.log('generateMonthlyCollections executed successfully');
-  } catch (error) {
-    console.error('Error in generateMonthlyCollections:', error);
-  }
-},
-{
-  timezone: "Asia/Kolkata" 
-});
+// cron.schedule('0 10 1 * *', async () => {
+//   try {
+//     await generateMonthlyCollections();
+//     console.log('generateMonthlyCollections executed successfully');
+//   } catch (error) {
+//     console.error('Error in generateMonthlyCollections:', error);
+//   }
+// },
+// {
+//   timezone: "Asia/Kolkata" 
+// });
 
-cron.schedule('0 10 2 * *', async () => {
-  try {
-    await generateMonthlySalaries();
-    console.log('generateMonthlySalaries executed successfully');
-  } catch (error) {
-    console.error('Error in generateMonthlySalaries:', error);
-  }
-},
-{
-  timezone: "Asia/Kolkata"
-});
+// cron.schedule('0 10 2 * *', async () => {
+//   try {
+//     await generateMonthlySalaries();
+//     console.log('generateMonthlySalaries executed successfully');
+//   } catch (error) {
+//     console.error('Error in generateMonthlySalaries:', error);
+//   }
+// },
+// {
+//   timezone: "Asia/Kolkata"
+// });
 
-// Schedule collectRent() for the 3rd of every month at 10 AM
-cron.schedule('0 10 3 * *', async () => {
-  try {
-    await collectRent();
-    console.log('collectRent executed successfully');
-  } catch (error) {
-    console.error('Error in collectRent:', error);
-  }
-},
-{
-  timezone: "Asia/Kolkata" // Setting timezone to IST
-});
+// // Schedule collectRent() for the 3rd of every month at 10 AM
+// cron.schedule('0 10 3 * *', async () => {
+//   try {
+//     await collectRent();
+//     console.log('collectRent executed successfully');
+//   } catch (error) {
+//     console.error('Error in collectRent:', error);
+//   }
+// },
+// {
+//   timezone: "Asia/Kolkata" // Setting timezone to IST
+// });
 
 
 app.get('/server/api',(req,res)=>{

@@ -29,36 +29,54 @@ export const generateMonthlyCollections = async () => {
     try {
         const lastMonth = new Date();
         lastMonth.setMonth(lastMonth.getMonth() - 1);
-        const lastMonthName = lastMonth.toLocaleString('default', { month: 'long' });
+        const lastMonthKey = `${lastMonth.getFullYear()}-${lastMonth.getMonth() + 1}`;
+
         const houses = await houseModel.find().populate('familyHead');
 
         for (const house of houses) {
-            const lastRecieptNumber=await getLastCollectionReceiptNumber()
-const newRecieptNumber = await NextReceiptNumber(lastRecieptNumber);
+            // Skip if the month is already in paidMonths
+            if (house.paidMonths.includes(lastMonthKey)) {
+                console.log(`Skipped ${house.name} - Collection for ${lastMonthKey} already paid`);
+                continue;
+            }
+
+            // Generate a new receipt number
+            const lastReceiptNumber = await getLastCollectionReceiptNumber();
+            const newReceiptNumber = await NextReceiptNumber(lastReceiptNumber);
+
+            // Create the collection entry
             const collection = new kudiCollection({
                 amount: house.collectionAmount,
                 date: new Date(),
-                description: `Monthly Kudi collection of ${house.collectionAmount} for ${house.familyHead.name} from ${house.name} house for the month of ${lastMonthName}.`,
+                description: `Monthly Kudi collection of ${house.collectionAmount} for ${house.familyHead?.name || 'unknown'} from ${house.name} house for the month of ${lastMonth.toLocaleString('default', { month: 'long' })}.`,
                 category: {
                     name: 'Kudi collection',
-                    description: `Monthly collection for ${house.familyHead.name || 'the house'}`,
+                    description: `Monthly collection for ${house.familyHead?.name || 'the house'}`,
                 },
-                memberId: house.familyHead._id,
-                houseId: house._id, 
+                memberId: house.familyHead?._id,
+                houseId: house._id,
                 status: 'Unpaid',
-                receiptNumber:newRecieptNumber
+                receiptNumber: newReceiptNumber,
             });
-            const UptdateReceiptNumber = await recieptNumberModel.findOne();
-            if (UptdateReceiptNumber) {
-                UptdateReceiptNumber.collectionReceiptNumber.lastNumber = newRecieptNumber;
-                await UptdateReceiptNumber.save();
+
+            // Update the receipt number tracker
+            const updateReceiptNumber = await recieptNumberModel.findOne();
+            if (updateReceiptNumber) {
+                updateReceiptNumber.collectionReceiptNumber.lastNumber = newReceiptNumber;
+                await updateReceiptNumber.save();
             }
+
+            // Save the collection
             await collection.save();
-            await sendWhatsAppMessage(
-                house,
-                lastMonthName
-            );
-          
+
+            // Mark the month as paid
+            house.paidMonths.push(lastMonthKey);
+            await house.save();
+
+            // Send a WhatsApp notification
+            await sendWhatsAppMessage(house, lastMonth.toLocaleString('default', { month: 'long' }));
+
+            // Wait before processing the next house
             await new Promise(resolve => setTimeout(resolve, 5000));
         }
 
@@ -67,6 +85,7 @@ const newRecieptNumber = await NextReceiptNumber(lastRecieptNumber);
         console.error('Error creating monthly collections:', error);
     }
 };
+
 
 const sendWhatsAppMessage = async (house,month) => {
     try {

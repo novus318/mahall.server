@@ -29,6 +29,10 @@ const houseSchema = new mongoose.Schema({
       enum: ['rented', 'owned'], 
       required: true 
    },
+   paidMonths: {
+      type: [String],
+      default: [],
+  },
    rationsStatus:String,
 }, { timestamps: true });
 

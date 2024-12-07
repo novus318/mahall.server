@@ -6,6 +6,8 @@ import kudiCollection from "../model/kudiCollection.js";
 import receiptModel from "../model/recieptModel.js";
 import { sendWhatsAppMessageFunction } from "../functions/generateMonthlyCollections.js";
 import { creditAccount } from "../functions/transaction.js";
+import recieptNumberModel from "../model/recieptNumberModel.js";
+import { NextReceiptNumber } from "../functions/recieptNumber.js";
 const router = express.Router()
 
 
@@ -223,7 +225,11 @@ router.put('/reject/collection/:id', async (req, res) => {
         res.status(500).send({ success: false, message: 'Server Error' });
     }
 });
+
+
 router.put('/update/collection/:id', async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { paymentType, targetAccount } = req.body;
         const collectionId = req.params.id;
@@ -237,19 +243,27 @@ router.put('/update/collection/:id', async (req, res) => {
                 status: 'Paid',
                 PaymentDate: new Date(),
             },
-            { new: true } // Return the updated document
+            { new: true, session } // Pass the session for transaction
         ).populate('memberId houseId');
 
         if (!updatedCollection) {
+            await session.abortTransaction(); // Rollback if collection not found
+            session.endSession();
             return res.status(404).send({ success: false, message: 'Kudi collection not found' });
         }
-        const ref =`/house/house-details/${updatedCollection.houseId._id}`
-        const transaction = creditAccount(updatedCollection.accountId, updatedCollection.amount,
+
+        const ref = `/house/house-details/${updatedCollection.houseId._id}`;
+
+        // Attempt to credit the account
+        const transaction = await creditAccount(updatedCollection.accountId, updatedCollection.amount,
             updatedCollection.description,
             updatedCollection.category.name,
-            ref
-        )
+            ref,
+            session
+        );
+
         if (!transaction) {
+            // Rollback if transaction failed
             await kudiCollection.findByIdAndUpdate(
                 collectionId,
                 {
@@ -258,18 +272,32 @@ router.put('/update/collection/:id', async (req, res) => {
                     accountId: targetAccount,
                     PaymentDate: new Date(),
                 },
-                { new: true }
-            )
+                { new: true, session } // Ensure this update also runs in the transaction
+            );
+            await session.abortTransaction();
+            session.endSession();
             return res.status(400).send({ success: false, message: 'Error crediting account' });
-        } else {
-            await sendWhatsAppMessageFunction(updatedCollection);
         }
+
+        // Send WhatsApp message only if transaction is successful
+        await sendWhatsAppMessageFunction(updatedCollection);
+
+        // Commit the transaction if everything goes well
+        await session.commitTransaction();
+        session.endSession();
+
         res.status(200).send({ success: true, message: 'Kudi collection updated successfully', data: updatedCollection });
     } catch (error) {
         console.error('Error updating kudi collection:', error);
+
+        // Rollback the transaction on error
+        await session.abortTransaction();
+        session.endSession();
+
         res.status(500).send({ success: false, message: 'Server Error' });
     }
 });
+
 
 router.get('/kudi-collections/:memberId', async (req, res) => {
     try {
@@ -324,6 +352,77 @@ router.get('/kudi-contribution/:houseId', async (req, res) => {
             message: 'An error occurred while fetching kudi contributions.'
         });
     }
+});
+
+async function getLastCollectionReceiptNumber() {
+    try {
+        const receiptNumber = await recieptNumberModel.findOne({}, 'collectionReceiptNumber.lastNumber');
+        if (receiptNumber && receiptNumber.collectionReceiptNumber) {
+            return receiptNumber.collectionReceiptNumber.lastNumber;
+        } else {
+            throw new Error('No receipt number found');
+        }
+    } catch (error) {
+        console.error('Error retrieving last collection receipt number:', error);
+        throw error;
+    }
+}
+router.post('/generateManualCollections/:houseId', async (req, res) => {
+    try {
+        const { houseId } = req.params;
+        const { months } = req.body;
+
+            const house = await houseModel.findById(houseId).populate('familyHead');
+            if (!house) {
+                console.error('Error fetching house:', error);
+                return res.status(404).json({  success:false , message: 'House not found.' });
+            }
+    
+            for (const month of months) {
+                // Check if the month is already paid
+                if (house.paidMonths.includes(month)) {
+                    console.log(`Skipped ${month} for ${house.name} - Already paid`);
+                    continue;
+                }
+    
+                // Generate a new receipt number
+                const lastReceiptNumber = await getLastCollectionReceiptNumber();
+                const newReceiptNumber = await NextReceiptNumber(lastReceiptNumber);
+    
+                // Create the collection entry
+                const collection = new kudiCollection({
+                    amount: house.collectionAmount,
+                    date: new Date(),
+                    description: `Manual Kudi collection of ${house.collectionAmount} for ${house.familyHead?.name || 'unknown'} from ${house.name} house for the month of ${month}.`,
+                    category: {
+                        name: 'Kudi collection',
+                        description: `Manual collection for ${house.familyHead?.name || 'the house'}`,
+                    },
+                    memberId: house.familyHead?._id,
+                    houseId: house._id,
+                    status: 'Unpaid',
+                    receiptNumber: newReceiptNumber,
+                });
+                const updateReceiptNumber = await recieptNumberModel.findOne();
+                if (updateReceiptNumber) {
+                    updateReceiptNumber.collectionReceiptNumber.lastNumber = newReceiptNumber;
+                    await updateReceiptNumber.save();
+                }
+    
+                // Save the collection
+                await collection.save();
+    
+                // Mark the month as paid
+                house.paidMonths.push(month);
+            }
+            await house.save();
+            res.status(200).json({success:true, message: 'Manual collections generated successfully.' });
+        } catch (error) {
+            console.error('Error generating manual collections:', error);
+            res.status(500).json({ message: 'Error generating manual collections.',
+                error,
+            success:false });
+        }
 });
 
 

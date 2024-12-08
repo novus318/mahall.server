@@ -19,10 +19,9 @@ console.log('start')
     if (!['bank', 'cash'].includes(accountType)) {
       return res.status(400).send({ success: false, message: 'Invalid account type' });
     }
-      console.log('th')
-    // Check if there are any existing accounts
+  
     const existingAccounts = await BankModel.countDocuments();
-console.log('th1')
+
     // Create a new bank or cash account document
     const newAccount = new BankModel({
       name,

@@ -29,6 +29,7 @@
     "path": "^0.12.7",
     "pdf-lib": "^1.17.1",
     "puppeteer": "^23.1.1",
+    "razorpay": "^2.9.5",
     "redis": "^4.7.0",
     "socket.io": "^4.8.0",
     "uploadthing": "^6.13.2",

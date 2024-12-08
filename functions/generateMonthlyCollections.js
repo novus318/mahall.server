@@ -53,6 +53,7 @@ export const generateMonthlyCollections = async () => {
                     name: 'Kudi collection',
                     description: `Monthly collection for ${house.familyHead?.name || 'the house'}`,
                 },
+                collectionMonth:lastMonth.toLocaleString('default', { month: 'long' }),
                 memberId: house.familyHead?._id,
                 houseId: house._id,
                 status: 'Unpaid',

@@ -304,7 +304,7 @@ router.get('/kudi-collections/:memberId', async (req, res) => {
         const { memberId } = req.params;
 
         // Find kudi collections by memberId
-        const collections = await kudiCollection.find({ memberId }).sort({ createdAt: -1 }).limit(10)
+        const collections = await kudiCollection.find({ memberId }).sort({ createdAt: -1 }).limit(20)
             .populate('memberId')
             .populate('houseId');
         res.status(200).json({ success: true, collections });
@@ -393,11 +393,12 @@ router.post('/generateManualCollections/:houseId', async (req, res) => {
                 const collection = new kudiCollection({
                     amount: house.collectionAmount,
                     date: new Date(),
-                    description: `Manual Kudi collection of ${house.collectionAmount} for ${house.familyHead?.name || 'unknown'} from ${house.name} house for the month of ${month}.`,
+                    description: `Monthly collection of ${house.collectionAmount} for ${house.familyHead?.name || 'unknown'} from ${house.name} house for the month of ${month}.`,
                     category: {
                         name: 'Kudi collection',
-                        description: `Manual collection for ${house.familyHead?.name || 'the house'}`,
+                        description: `Monthly collection for ${house.familyHead?.name || 'the house'}`,
                     },
+                    collectionMonth:month,
                     memberId: house.familyHead?._id,
                     houseId: house._id,
                     status: 'Unpaid',

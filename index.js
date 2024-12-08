@@ -22,6 +22,7 @@ import messageRoutes from './routes/messageRoute.js'
 import settingRoutes from './routes/settingRoutes.js'
 import reportRoutes from './routes/reportRoutes.js'
 import adminRoute from './routes/adminRoute.js'
+import razorpayRoute from './routes/razorpayRoute.js'
 
 
 
@@ -104,6 +105,7 @@ app.use('/server/api/message',messageRoutes)
 app.use('/server/api/setting',settingRoutes)
 app.use('/server/api/reports',reportRoutes)
 app.use('/server/api/admin',adminRoute)
+app.use('/server/api/razorpay',razorpayRoute)
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

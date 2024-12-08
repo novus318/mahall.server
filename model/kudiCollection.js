@@ -30,6 +30,9 @@ const kudiCollectionSchema = new mongoose.Schema({
             required: false // Optional description for the category
         }
     },
+   collectionMonth: {
+    type: String,
+   },
     kudiCollectionType: {
         type: String,
         enum: ['Online', 'Cash'], // Type of kudiCollection: Online or Cash

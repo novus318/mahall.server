@@ -7,6 +7,8 @@ import mongoose from "mongoose";
 import { creditAccount } from "../functions/transaction.js";
 import { sendWhatsAppMessageFunction } from "../functions/generateMonthlyCollections.js";
 import BankModel from "../model/BankModel.js";
+import buildingModel from "../model/buildingModel.js";
+import { sendRentConfirmWhatsapp } from "../functions/generateRent.js";
 
 dotenv.config({ path: './.env' })
 
@@ -136,5 +138,137 @@ router.get('/house-collection/:recieptNo', async (req, res) => {
         return res.status(500).send({ success: false, message: 'Server error' });
     }
 });
+
+router.get('/rent-collection/:buildingID/:roomId/:contractId/:rentId', async (req, res) => {
+    const { buildingID, roomId,contractId,rentId } = req.params;
+    try{
+        const building = await buildingModel.findById(buildingID);
+        if (!building) {
+            return res.status(404).send({ success: false, message: 'Building not found' });
+        }
+        const room = building.rooms.id(roomId);
+        if (!room) {
+            return res.status(404).send({ success: false, message: 'Room not found' });
+        }
+        const activeContract = room.contractHistory.find(
+            contract => contract._id.toString() === contractId
+          );
+          if (!activeContract) {
+            return res.status(404).send({ success: false, message: 'Contract not found' });
+          }
+          const rentCollection = activeContract.rentCollection.id(rentId);
+          if (!rentCollection) {
+            return res.status(404).send({ success: false, message: 'Rent collection not found' });
+          }
+          const tenant = activeContract.tenant
+          return res.status(200).json({ success: true, rentCollection,tenant });
+    }catch (error) {
+    
+    }
+});
+
+router.post('/verify/rentpayment', async (req, res) => {
+    const session = await mongoose.startSession();
+    try {
+      const { order_id, payment_id, signature, buildingId, roomId, contractId, rentId } = req.body;
+  
+      // Validate required fields
+      if (!order_id || !payment_id || !signature || !buildingId || !roomId || !contractId || !rentId) {
+        return res.status(400).json({ success: false, message: 'Missing required fields' });
+      }
+  
+      // Verify Razorpay signature
+      const generatedSignature = crypto
+        .createHmac('sha256', RAZORPAY_KEY_SECRET)
+        .update(`${order_id}|${payment_id}`)
+        .digest('hex');
+  
+      if (generatedSignature !== signature) {
+        return res.status(400).json({ success: false, message: 'Invalid signature' });
+      }
+  
+      // Fetch primary account
+      const targetAccount = await BankModel.findOne({ primary: true }).lean();
+      if (!targetAccount) {
+        return res.status(404).json({ success: false, message: 'Primary account not found' });
+      }
+  
+      session.startTransaction();
+  
+      // Fetch building and related details
+      const building = await buildingModel.findById(buildingId).session(session);
+      if (!building) {
+        throw new Error('Building not found');
+      }
+  
+      const room = building.rooms.id(roomId);
+      if (!room) {
+        throw new Error('Room not found');
+      }
+  
+      const activeContract = room.contractHistory.find(
+        contract => contract._id.toString() === contractId
+      );
+      if (!activeContract) {
+        throw new Error('Contract not found');
+      }
+  
+      const rentCollection = activeContract.rentCollection.id(rentId);
+      if (!rentCollection) {
+        throw new Error('Rent collection not found');
+      }
+  
+      // Update rent collection fields
+      Object.assign(rentCollection, {
+        status: 'Paid',
+        PaymentAmount: rentCollection.amount,
+        paymentMethod: 'Online',
+        paymentDate: new Date(),
+        accountId: targetAccount._id,
+      });
+  
+      const description = `Rent from ${activeContract.tenant.name} for building ${building.buildingID} room ${room.roomNumber}`;
+      const ref = `/rent/room-details/${building._id}/${roomId}/${contractId}`;
+      const category = 'Rent';
+  
+      // Perform credit transaction
+      try {
+        await creditAccount(targetAccount._id, rentCollection.amount, description, category, ref);
+      } catch (transactionError) {
+        // Rollback changes in the database if the credit transaction fails
+        throw new Error(`Credit transaction failed: ${transactionError.message}`);
+      }
+  
+      // Save building changes
+      await building.save({ session });
+  
+      // Commit the transaction
+      await session.commitTransaction();
+  
+      // Notify tenant
+      await sendRentConfirmWhatsapp(rentCollection, activeContract.tenant, room, building, activeContract);
+  
+      res.status(200).json({
+        success: true,
+        message: 'Rent payment verified and processed successfully',
+        rentCollection,
+      });
+    } catch (error) {
+      console.error('Error in payment verification:', error);
+  
+      // Rollback transaction in case of an error
+      if (session.inTransaction()) {
+        await session.abortTransaction();
+      }
+  
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Payment verification failed',
+      });
+    } finally {
+      session.endSession();
+    }
+  });
+  
 
 export default router;

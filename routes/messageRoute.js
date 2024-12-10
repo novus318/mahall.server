@@ -152,13 +152,13 @@ router.post('/webhook', async (req, res) => {
 
                       // Mark the message as seen
                       await axios.post(
-                          `https://graph.facebook.com/v16.0/442901612235909/messages`,
+                          WHATSAPP_API_URL,
                           {
                               status: 'read'
                           },
                           {
                               headers: {
-                                  'Authorization': `Bearer ${WHATSAPP_TOKEN}`
+                                  'Authorization': `Bearer ${ACCESS_TOKEN}`
                               }
                           }
                       );

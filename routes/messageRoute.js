@@ -45,47 +45,47 @@ router.post('/webhook', async (req, res) => {
       const { entry } = req.body;
 
       if (entry && entry.length > 0) {
-        const changes = entry[0].changes;
-        if (changes && changes.length > 0) {
-            const messageData = changes[0].value.messages;
+          const changes = entry[0].changes;
+          if (changes && changes.length > 0) {
+              const messageData = changes[0].value.messages;
 
-            if (messageData && messageData.length > 0) {
-                const message = messageData[0];
-                let newMessage;
+              if (messageData && messageData.length > 0) {
+                  const message = messageData[0];
+                  let newMessage;
 
-                // Common fields for all messages
-                const senderName = changes[0].value.contacts[0].profile.name;
-                const senderNumber = message.from;
+                  // Common fields for all messages
+                  const senderName = changes[0].value.contacts[0]?.profile?.name || "Unknown";
+                  const senderNumber = message.from;
 
-                switch (message.type) {
-                    case 'text':
-                        // Handle text message
-                        newMessage = new messageModel({
-                            senderName,
-                            senderNumber,
-                            messageContent: message.text.body,
-                            messageType: 'text'
-                        });
-                        break;
+                  switch (message.type) {
+                      case 'text':
+                          // Handle text message
+                          newMessage = new messageModel({
+                              senderName,
+                              senderNumber,
+                              messageContent: message.text.body,
+                              messageType: 'text'
+                          });
+                          break;
 
-                    case 'reaction':
-                        // Handle reaction message
-                        newMessage = new messageModel({
-                            senderName,
-                            senderNumber,
-                            emoji: message.reaction.emoji,
-                            messageType: 'reaction',
-                            reactedToMessageId: message.reaction.messsage_id
-                        });
-                        break;
+                      case 'reaction':
+                          // Handle reaction message
+                          newMessage = new messageModel({
+                              senderName,
+                              senderNumber,
+                              emoji: message.reaction.emoji,
+                              messageType: 'reaction',
+                              reactedToMessageId: message.reaction.message_id
+                          });
+                          break;
 
-                        case 'image':
-                          // Handle image message, download and save as blob
+                      case 'image':
+                          // Handle image message
                           const imageBlob = await downloadMedia(message.image.id);
                           newMessage = new messageModel({
                               senderName,
                               senderNumber,
-                              messageContent: message.image.caption,
+                              messageContent: message.image.caption || "",
                               messageType: 'image',
                               mediaBlob: imageBlob,
                               mediaType: message.image.mime_type,
@@ -93,7 +93,7 @@ router.post('/webhook', async (req, res) => {
                           break;
 
                       case 'sticker':
-                          // Handle sticker message, download and save as blob
+                          // Handle sticker message
                           const stickerBlob = await downloadMedia(message.sticker.id);
                           newMessage = new messageModel({
                               senderName,
@@ -104,9 +104,10 @@ router.post('/webhook', async (req, res) => {
                           });
                           break;
 
-                          case 'audio':
-                            const audioBlob = await downloadMedia(message.audio.id);
-                            newMessage = new messageModel({
+                      case 'audio':
+                          // Handle audio message
+                          const audioBlob = await downloadMedia(message.audio.id);
+                          newMessage = new messageModel({
                               senderName,
                               senderNumber,
                               messageContent: message.audio.duration,
@@ -116,21 +117,23 @@ router.post('/webhook', async (req, res) => {
                           });
                           break;
 
-                          case 'video':
-                            const videoBlob = await downloadMedia(message.video.id);
-                            newMessage = new messageModel({
+                      case 'video':
+                          // Handle video message
+                          const videoBlob = await downloadMedia(message.video.id);
+                          newMessage = new messageModel({
                               senderName,
                               senderNumber,
-                              messageContent: message.video.duration,
+                              messageContent: message.video.caption || "",
                               messageType: 'video',
                               mediaBlob: videoBlob,
                               mediaType: message.video.mime_type,
                           });
                           break;
-                         
-                          case 'document':
-                            const documentBlob = await downloadMedia(message.document.id);
-                            newMessage = new messageModel({
+
+                      case 'document':
+                          // Handle document message
+                          const documentBlob = await downloadMedia(message.document.id);
+                          newMessage = new messageModel({
                               senderName,
                               senderNumber,
                               messageContent: message.document.filename,
@@ -138,23 +141,39 @@ router.post('/webhook', async (req, res) => {
                               mediaBlob: documentBlob,
                               mediaType: message.document.mime_type,
                           });
-                    default:
-                        console.log(`Unknown message type: ${message.type}`);
-                        break;
-                }
+                          break;
 
-                // Save the message to MongoDB
-                if (newMessage) {
-                    await newMessage.save();
-                    console.log('Message saved:', newMessage);
-                }
-            }
-        }
-    }
+                      default:
+                          console.log(`Unknown message type: ${message.type}`);
+                          break;
+                  }
+
+                  // Save the message to MongoDB
+                  if (newMessage) {
+                      await newMessage.save();
+                      console.log('Message saved:', newMessage);
+
+                      // Mark the message as seen
+                      await axios.post(
+                          `https://graph.facebook.com/v16.0/${message.id}/messages`,
+                          {
+                              status: 'read'
+                          },
+                          {
+                              headers: {
+                                  'Authorization': `Bearer ${process.env.WHATSAPP_TOKEN}`
+                              }
+                          }
+                      );
+                      console.log('Message marked as seen.');
+                  }
+              }
+          }
+      }
 
       res.sendStatus(200); // Acknowledge the request
   } catch (error) {
-      console.error('Error processing', error);
+      console.error('Error processing webhook:', error);
       res.status(500).send('Internal Server Error');
   }
 });

@@ -149,20 +149,6 @@ router.post('/webhook', async (req, res) => {
                 if (newMessage) {
                     await newMessage.save();
                     console.log('Message saved:', newMessage);
-
-                      // Mark the message as seen
-                      await axios.post(
-                          WHATSAPP_API_URL,
-                          {
-                              status: 'read'
-                          },
-                          {
-                              headers: {
-                                  'Authorization': `Bearer ${ACCESS_TOKEN}`
-                              }
-                          }
-                      );
-                      console.log('Message marked as seen.');
                 }
             }
         }

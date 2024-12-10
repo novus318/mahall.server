@@ -173,7 +173,7 @@ router.post('/webhook', async (req, res) => {
 
       res.sendStatus(200); // Acknowledge the request
   } catch (error) {
-      console.error('Error processing webhook:', error);
+      console.error('Error processing webhook:', error.data.error);
       res.status(500).send('Internal Server Error');
   }
 });

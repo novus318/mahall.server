@@ -110,3 +110,20 @@ app.use('/server/api/razorpay',razorpayRoute)
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
+app.use((req, res, next) => {
+  res.status(404).json({
+    success: false,
+    message: "API route not found",
+  });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error("Global Error Handler:", err.stack || err);
+
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal Server Error",
+  });
+});

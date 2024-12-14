@@ -155,6 +155,7 @@ router.get('/get', async (req, res) => {
         }).populate('familyHead');
         res.status(200).send({ success: true, houses });
     } catch (error) {
+        console.log(error)
         res.status(500).send({ success: false, message: 'Server Error' });
     }
 });

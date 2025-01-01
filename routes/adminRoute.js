@@ -5,9 +5,14 @@ import path from 'path';
 const router = express.Router();
 
 const dataFilePath = path.join(process.cwd(), 'data', 'number.json');
+const dataPlaceFilePath = path.join(process.cwd(), 'data', 'data.json');
 
 async function readNumbers() {
     const fileContents = await fs.readFile(dataFilePath, 'utf-8');
+    return JSON.parse(fileContents);
+}
+async function readPlaces() {
+    const fileContents = await fs.readFile(dataPlaceFilePath, 'utf-8');
     return JSON.parse(fileContents);
 }
 
@@ -112,6 +117,50 @@ router.delete('/delete-number', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Failed to delete number' });
+    }
+});
+
+
+router.post('/add-place', async (req, res) => {
+    const { newPlace } = req.body;
+  
+    try {
+      if (!newPlace || newPlace.trim() === '') {
+        return res.status(400).json({ message: 'Invalid input' });
+      }
+  
+      // Read the existing file
+      const fileContent = await fs.readFile(dataPlaceFilePath, 'utf8');
+      const data = JSON.parse(fileContent); // Parse the JSON data
+  
+      if (!Array.isArray(data.places)) {
+        return res.status(500).json({ message: 'Invalid data format in file' });
+      }
+  
+      // Add the new place to the places array
+      data.places.push(newPlace);
+  
+      // Write the updated data back to the file
+      await fs.writeFile(dataPlaceFilePath, JSON.stringify(data, null, 2), 'utf8');
+  
+      res.status(200).json({
+        success: true,
+        message: 'Place added successfully',
+        places: data.places,
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Failed to add place' });
+    }
+  });
+
+router.get('/get-places', async (req, res) => {
+    try {
+        const places = await readPlaces();
+        res.status(200).json(places.places);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Failed to retrieve places' });
     }
 });
 

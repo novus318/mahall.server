@@ -172,6 +172,29 @@ router.post('/create', async (req, res) => {
       res.status(500).json({ message: 'An error occurred while creating the member.', error: error.message });
     }
   });
+
+  router.put('/update-member/number', async (req, res) => {
+    try {
+      const { familyHead } = req.body;
+
+      if (!mongoose.Types.ObjectId.isValid(familyHead._id)) {
+        return res.status(400).json({ 
+            success:false,
+            message: 'Invalid family head ID' });
+      }
+      // Update the family head of the house
+      await memberModel.updateOne({ _id: familyHead._id }, { is_mobile_verified: true });
+
+      res.status(201).json({
+        success: true,
+        message: 'Family head number updated successfully.',
+      });
+    } catch (error) {
+      // Handle any errors that occur during the member creation process
+      console.error(error);
+      res.status(500).json({ message: 'An error occurred while updating member number.', error: error.message });
+    }
+  });
   
 
   router.get('/all-members/:pid', async (req, res) => {

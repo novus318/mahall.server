@@ -246,6 +246,7 @@ router.get('/messages/count', async (req, res) => {
       success: true
      , count});
   } catch (error) {
+    console.log(error)
     res.status(500).send({
       success: false
      , message: 'Server Error'

@@ -50,6 +50,10 @@ const memberSchema = new mongoose.Schema({
   whatsappNumber:{
     type: String,
   },
+  is_mobile_verified: {
+    type: Boolean,
+    default: false
+  },
   relation: {
     member: {
       type: mongoose.Schema.Types.ObjectId,

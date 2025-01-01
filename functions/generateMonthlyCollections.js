@@ -107,6 +107,7 @@ const sendWhatsAppMessage = async (house,month) => {
                             parameters: [
                                 { type: 'text', text: house.familyHead.name }, 
                                 { type: 'text', text: month },   
+                                { type: 'text', text: house.number },
                                 { type: 'text', text: house.collectionAmount },
                             ]
                         },
@@ -157,7 +158,15 @@ export const sendWhatsAppMessageFunction = async (collection) => {
                                 },
                                 {
                                     type: 'text',
+                                    text: `${collection.collectionMonth}`
+                                },
+                                {
+                                    type: 'text',
                                     text: `${collection.amount}`
+                                },
+                                {
+                                    type: 'text',
+                                    text: `${collection.kudiCollectionType}`
                                 },
                             ]
                         },
@@ -166,7 +175,7 @@ export const sendWhatsAppMessageFunction = async (collection) => {
                             sub_type: 'url',
                             index: '0',
                             parameters: [
-                                { type: 'text', text: `${collection.memberId._id}` }         // {{1}} -> paymentUrl
+                                { type: 'text', text: `${collection.memberId._id}` }
                             ]
                         }
                     ]

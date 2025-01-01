@@ -308,7 +308,8 @@ router.post('/generate-payment/link', async (req, res) => {
     const paymentLinkData = {
       amount: amount * 100, // Convert to paisa (smallest currency unit)
       currency: 'INR',
-      accept_partial: false,
+      accept_partial: true,
+      reference_id: houseDetails.number,
       description: `Payment for house ${houseDetails.number}`,
       customer: {
         name: familyHead.name,
@@ -343,6 +344,8 @@ router.post('/generate-payment/link', async (req, res) => {
               type: 'body',
               parameters: [
                 { type: 'text',
+                  text: `${familyHead.name}` },
+                { type: 'text',
                   text: `${amount}` },
               ],
             },
@@ -373,7 +376,6 @@ router.post('/generate-payment/link', async (req, res) => {
     });
   } catch (error) {
     console.error('Error:', error);
-    console.log(error.response.data)
     return res.status(500).json({
       success: false,
       message: 'Internal Server Error',

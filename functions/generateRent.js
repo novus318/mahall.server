@@ -79,10 +79,10 @@ const sendWhatsapp = async (rentCollection, tenant,room,building,contract) => {
                     {
                         type: 'body',
                         parameters: [
-                            { type: 'text', text: tenant.name },
-                            { type: 'text', text: rentCollection.period},     
-                            { type: 'text', text: room.roomNumber },   
-                            { type: 'text', text: rentCollection.amount},          
+                            { type: 'text', text: `${tenant.name}` },
+                            { type: 'text', text: `${rentCollection.period}`},     
+                            { type: 'text', text: `${room.roomNumber}` },   
+                            { type: 'text', text: `${rentCollection.amount}`},          
                         ]
                     },
                     {
@@ -126,10 +126,10 @@ export const sendRentConfirmWhatsapp = async (rentCollection, tenant,room,buildi
                     {
                         type: 'body',
                         parameters: [
-                            { type: 'text', text: tenant.name }, 
-                            { type: 'text', text: rentCollection.period},    
-                            { type: 'text', text: room.roomNumber },   
-                            { type: 'text', text: rentCollection.PaymentAmount},          
+                            { type: 'text', text: `${tenant.name}` }, 
+                            { type: 'text', text: `${rentCollection.period}`},    
+                            { type: 'text', text: `${room.roomNumber}` },   
+                            { type: 'text', text: `${rentCollection.PaymentAmount}`},          
                         ]
                     },
                     {

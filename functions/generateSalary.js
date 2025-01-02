@@ -65,9 +65,9 @@ const formattedNetPay = netPay.toLocaleString(undefined, { minimumFractionDigits
                         {
                             type: 'body',
                             parameters: [
-                                { type: 'text', text: salary.staffId.name },     
-                                { type: 'text', text: month },   
-                                { type: 'text', text: formattedNetPay},
+                                { type: 'text', text: `${salary.staffId.name}` },     
+                                { type: 'text', text: `${month}` },   
+                                { type: 'text', text: `${formattedNetPay}`},
                             ]
                         },
                         {

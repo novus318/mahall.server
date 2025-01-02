@@ -48,12 +48,12 @@ export const generateMonthlyCollections = async () => {
             const collection = new kudiCollection({
                 amount: house.collectionAmount,
                 date: new Date(),
-                description: `Monthly Kudi collection of ${house.collectionAmount} for ${house.familyHead?.name || 'unknown'} from ${house.name} house for the month of ${lastMonth.toLocaleString('default', { month: 'long' })}.`,
+                description: `Monthly Kudi collection of ${house.collectionAmount} for ${house.familyHead?.name || 'unknown'} from ${house.name} house for the month of ${lastMonth.getFullYear()} - ${lastMonth.toLocaleString('default', { month: 'long' })}.`,
                 category: {
                     name: 'Kudi collection',
                     description: `Monthly collection for ${house.familyHead?.name || 'the house'}`,
                 },
-                collectionMonth:lastMonth.toLocaleString('default', { month: 'long' }),
+                collectionMonth:`${lastMonth.getFullYear()} - ${lastMonth.toLocaleString('default', { month: 'long' })}`,
                 memberId: house.familyHead?._id,
                 houseId: house._id,
                 status: 'Unpaid',

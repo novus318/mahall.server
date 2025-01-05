@@ -1,5 +1,8 @@
 import { createLogger, format, transports } from 'winston';
 import nodemailer from 'nodemailer';
+import dotenv from 'dotenv'
+
+dotenv.config({ path: './.env' })
 
 const { combine, timestamp, printf } = format;
 
@@ -16,7 +19,7 @@ const transporter = nodemailer.createTransport({
   secure: true,
   auth: {
     user: 'nizamudheen.tech@gmail.com', // Your email address
-    pass: 'fdki xlir pxlg oahx', // Your email password or App Password if 2FA is enabled
+    pass: process.env.SMTP_MAIL_PASS, // Your email password or App Password if 2FA is enabled
   },
 });
 

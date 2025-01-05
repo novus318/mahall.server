@@ -1,6 +1,9 @@
 import mongoose from 'mongoose'
 import colors from 'colors'
 import logger from '../utils/logger.js'
+import dotenv from 'dotenv'
+
+dotenv.config({ path: '../.env' })
 const connectDB =async()=>{
     try{
         const conn= await mongoose.connect(process.env.MONGO_URL)

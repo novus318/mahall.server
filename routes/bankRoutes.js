@@ -2,13 +2,13 @@ import express  from "express";
 import BankModel from "../model/BankModel.js";
 import transactionModel from "../model/transactionModel.js";
 import mongoose from "mongoose";
+import logger from "../utils/logger.js";
 const router=express.Router()
 
 
 
 router.post('/create', async (req, res) => {
   const { name, holderName, accountNumber, ifscCode, balance, accountType } = req.body;
-console.log('start')
   try {
     // Input validation
     if (!name || !holderName || !accountType) {
@@ -35,7 +35,6 @@ console.log('start')
 
     // Save the account document to the database
     const savedAccount = await newAccount.save();
-console.log('end')
     // Send a success response
     res.status(201).send({
       success: true,
@@ -43,7 +42,7 @@ console.log('end')
       account: savedAccount,
     });
   } catch (error) {
-    console.error('Error creating account:', error);
+    logger.error(error)
     res.status(500).send({
       success: false,
       message: 'Server error while creating account',
@@ -85,13 +84,14 @@ console.log('end')
         // Send a success response
         res.status(200).send({ success: true, message: 'Primary account set successfully', account: updatedAccount });
       } catch (error) {
+        logger.error(error)
         // Rollback the transaction in case of an error
         await session.abortTransaction();
         session.endSession();
         throw error;
       }
     } catch (error) {
-      // Handle any errors that occur
+      logger.error(error)
       res.status(500).send({ success: false, message: 'Server Error', error: error.message });
     }
   });
@@ -129,6 +129,7 @@ router.put('/edit/:id', async (req, res) => {
         // Send a success response
         res.status(200).send({ success: true, account: updatedAccount });
     } catch (error) {
+      logger.error(error)
         // Handle any errors that occur
         res.status(500).send({ success: false, message: 'Server Error', error: error.message });
     }
@@ -144,7 +145,7 @@ router.get('/get-all', async (req, res) => {
       // Send a success response
       res.status(200).send({ success: true, accounts });
   } catch (error) {
-      // Handle any errors that occur
+    logger.error(error)
       res.status(500).send({ success: false, message: 'Server Error',
           error: error.message,
       });
@@ -172,6 +173,7 @@ router.get('/get', async (req, res) => {
           data: accounts,
       });
   } catch (error) {
+    logger.error(error)
       res.status(500).send({
           success: false,
           message: 'An error occurred while fetching accounts. Please try again later.',
@@ -252,6 +254,7 @@ router.post('/inter-account-transfer', async (req, res) => {
       transactions: { debitTransactionId: debitTransaction._id, creditTransactionId: creditTransaction._id } 
     });
   } catch (error) {
+    logger.error(error)
     await session.abortTransaction(); // Rollback transaction in case of any error
     res.status(500).send({ success: false, message: 'Transfer failed', error: error.message });
   } finally {

@@ -1,9 +1,10 @@
 import express  from "express";
 import staffModel from "../model/staffModel.js";
 import salaryModel from "../model/salaryModel.js"
-import { creditAccount, debitAccount, deleteDebitTransaction } from "../functions/transaction.js";
+import { creditAccount, debitAccount } from "../functions/transaction.js";
 import { sendWhatsAppSalary } from "../functions/generateSalary.js";
 import mongoose from "mongoose";
+import logger from "../utils/logger.js";
 const router=express.Router()
 
 
@@ -35,7 +36,7 @@ router.post('/create', async (req, res) => {
             success:true,
             message: 'Staff member created successfully' });
     } catch (error) {
-        console.error('Error creating staff:', error);
+        logger.error(error)
         res.status(500).json({ message: 'Error creating staff member' });
     }
 });
@@ -58,7 +59,7 @@ router.put('/update-status/:id', async (req, res) => {
 
         res.status(200).json({ success:true ,message: 'Staff status updated successfully', staff });
     } catch (error) {
-        console.error('Error updating staff status:', error);
+        logger.error(error)
         res.status(500).json({success:false, message: 'Error updating staff status' });
     }
 });
@@ -94,7 +95,7 @@ router.put('/edit/:id', async (req, res) => {
             success:true,
             message: 'Staff member updated successfully', staff: updatedStaff });
     } catch (error) {
-        console.log(error)
+        logger.error(error)
         res.status(500).json({ 
             error,
             success:true,
@@ -119,6 +120,7 @@ router.delete('/delete/:id', async (req, res) => {
             success:true,
             message: 'Staff member deleted successfully', staff: deletedStaff });
     } catch (error) {
+        logger.error(error)
         res.status(500).json({
             error,
             success: false,
@@ -145,6 +147,7 @@ router.get('/get/:id', async (req, res) => {
 
         res.status(200).json({ success:true, message: 'Staff member retrieved successfully', staff,payslips });
     } catch (error) {
+        logger.error(error)
         res.status(500).json({ 
             error,
             success: false,
@@ -161,6 +164,7 @@ router.get('/all-staff', async (req, res) => {
 
         res.status(200).json({ success: true, staff });
     } catch (error) {
+        logger.error(error)
         res.status(500).json({ 
             error,
             success:false,
@@ -177,7 +181,11 @@ router.get('/pending-salaries', async (req, res) => {
 
         res.status(200).json({ success: true, payslips });
     } catch (error) {
-     
+        logger.error(error)
+        res.status(500).json({ 
+            error,
+            success: false,
+            message: 'Error retrieving pending salaries' });
     }
 });
 
@@ -241,7 +249,6 @@ router.put('/update/salary/:id', async (req, res) => {
         const ref = `/staff/details/${updatePayslip.staffId._id}`;
         const description = `Salary payment for ${updatePayslip.salaryPeriod.startDate.toDateString()} to ${updatePayslip.salaryPeriod.endDate.toDateString()} for ${updatePayslip.staffId.name}`;
 
-        let debitTransactionId;
 
         // Debit the account for net pay
         const transaction = await debitAccount(accountId, pay, description, category, ref);
@@ -263,7 +270,7 @@ router.put('/update/salary/:id', async (req, res) => {
 
         res.status(200).json({ success: true, message: 'Payroll updated successfully', updatePayslip });
     } catch (error) {
-        console.error('Error updating payroll:', error);
+        logger.error(error)
         res.status(500).json({
             success: false,
             message: 'Error updating payroll',
@@ -300,6 +307,7 @@ try {
     });
 }
 } catch (error) {
+    logger.error(error)
     res.status(500).json({ 
         error,
         success: false,
@@ -336,6 +344,7 @@ try {
     });
 }
 } catch (error) {
+    logger.error(error)
     res.status(500).json({ 
         error,
         success: false,
@@ -354,6 +363,7 @@ router.get('/pending-salary/:id', async (req, res) => {
 
         res.status(200).json({ success: true, payslips });
     } catch (error) {
+        logger.error(error)
         res.status(500).json({ 
             error,
             success: false,

@@ -1,8 +1,8 @@
 import express  from "express";
-import jwt from "jsonwebtoken";
 import memberModel from "../model/memberModel.js";
 import houseModel from "../model/houseModel.js";
 import mongoose from "mongoose";
+import logger from "../utils/logger.js";
 const router=express.Router()
 
 
@@ -73,7 +73,7 @@ router.post('/create', async (req, res) => {
       });
     } catch (error) {
       // Handle any errors that occur during the member creation process
-      console.error(error);
+      logger.error(error)
       res.status(500).json({ message: 'An error occurred while creating the member.', error: error.message });
     }
   });
@@ -114,6 +114,7 @@ router.post('/create', async (req, res) => {
             member: deletedMember,
         });
     } catch (error) {
+      logger.error(error)
         res.status(500).json({ 
             message: 'An error occurred while deleting the member.', 
             error: error.message 
@@ -148,7 +149,6 @@ router.post('/create', async (req, res) => {
         { new: true } // This option returns the updated document
       );
   
-     console.log(selectedRelation)
       if (selectedRelation.memberId && mongoose.Types.ObjectId.isValid(selectedRelation.memberId)) {
         updatedmember.relation = {
           member: selectedRelation.memberId,
@@ -167,8 +167,7 @@ router.post('/create', async (req, res) => {
         member: savedMember,
       });
     } catch (error) {
-      // Handle any errors that occur during the member creation process
-      console.error(error);
+      logger.error(error)
       res.status(500).json({ message: 'An error occurred while creating the member.', error: error.message });
     }
   });
@@ -190,8 +189,7 @@ router.post('/create', async (req, res) => {
         message: 'Family head number updated successfully.',
       });
     } catch (error) {
-      // Handle any errors that occur during the member creation process
-      console.error(error);
+      logger.error(error)
       res.status(500).json({ message: 'An error occurred while updating member number.', error: error.message });
     }
   });
@@ -233,8 +231,7 @@ router.post('/create', async (req, res) => {
         members:populatedMembers,}
       );
     } catch (error) {
-      // Handle any errors that occur during the fetch process
-      console.error(error);
+      logger.error(error)
       res.status(500).json({ 
         success:false,
         message: 'An error occurred while fetching members.',
@@ -259,6 +256,7 @@ router.post('/create', async (req, res) => {
         members,
       });
     } catch (error) {
+      logger.error(error)
       res.status(500).json({ 
         success:false,
         message: 'An error occurred while fetching member.',
@@ -271,14 +269,15 @@ router.post('/create', async (req, res) => {
     try {
       const { search } = req.query;
       const query = search
-        ? { name: { $regex: search, $options: 'i' } } // Case-insensitive search
+        ? { name: { $regex: search, $options: 'i' } }
         : {};
   
       const members = await memberModel.find(query, { name: 1, _id: 1 })
-        .populate('house', 'number'); // Populate the house field and only include the house number
+        .populate('house', 'number');
   
       res.status(200).json({ success: true, members });
     } catch (error) {
+      logger.error(error)
       res.status(500).json({ success: false, message: 'Error fetching member names, IDs, and house numbers', error: error.message });
     }
   });

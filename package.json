@@ -3,10 +3,10 @@
   "name": "mahall.server",
   "version": "1.0.0",
   "main": "index.js",
-  "scripts": {
-    "start": "nodemon index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+"scripts": {
+  "start": "nodemon --delay 10 index.js",
+  "test": "echo \"Error: no test specified\" && exit 1"
+},
   "author": "",
   "license": "ISC",
   "description": "",
@@ -33,6 +33,7 @@
     "redis": "^4.7.0",
     "socket.io": "^4.8.0",
     "uploadthing": "^6.13.2",
-    "util": "^0.12.5"
+    "util": "^0.12.5",
+    "winston": "^3.17.0"
   }
 }

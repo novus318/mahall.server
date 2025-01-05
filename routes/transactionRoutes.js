@@ -1,6 +1,7 @@
 import express  from "express";
 import transactionModel from "../model/transactionModel.js";
 import BankModel from "../model/BankModel.js";
+import logger from "../utils/logger.js";
 const router=express.Router()
 
 
@@ -12,6 +13,7 @@ router.get('/get/self-transfer', async (req, res) => {
       
       res.status(200).send({ success: true, data: transactions });
     } catch (error) {
+      logger.error(error)
       res.status(500).send({ success: false, message: 'Failed to retrieve transactions', error: error.message });
     }
   });
@@ -23,12 +25,13 @@ router.get('/get/self-transfer', async (req, res) => {
       
       res.status(200).send({ success: true, data: transactions });
     } catch (error) {
+      logger.error(error)
       res.status(500).send({ success: false, message: 'Failed to retrieve transactions', error: error.message });
     }
   })
   router.get('/recent/transactions/byDate', async (req, res) => {
     try {
-      const { fromDate, toDate, accountName } = req.query;
+      const { fromDate, toDate, accountName, category } = req.query;
   
       if (!fromDate || !toDate) {
         return res.status(400).send({ success: false, message: 'Please provide both fromDate and toDate' });
@@ -56,7 +59,12 @@ router.get('/get/self-transfer', async (req, res) => {
         }
       }
   
-      // Fetch all transactions within the date range and account filter
+      // Add category filter if provided
+      if (category) {
+        query.category = category; // Filter by category
+      }
+  
+      // Fetch all transactions within the date range and filters
       const transactions = await transactionModel.find(query)
         .sort({ date: 1 })
         .populate('accountId');
@@ -118,10 +126,11 @@ router.get('/get/self-transfer', async (req, res) => {
   
       res.status(200).send({ success: true, statement, message: '' });
     } catch (error) {
-      console.log(error)
+      logger.error(error)
       res.status(500).send({ success: false, message: 'Failed to retrieve transactions', error: error.message });
     }
   });
+  
    
 
 

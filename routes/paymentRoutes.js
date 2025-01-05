@@ -5,6 +5,7 @@ import paymentModel from "../model/paymentModel.js";
 import recieptNumberModel from "../model/recieptNumberModel.js";
 import { NextReceiptNumber } from "../functions/recieptNumber.js";
 import mongoose from "mongoose";
+import logger from "../utils/logger.js";
 const router=express.Router()
 
 
@@ -29,6 +30,7 @@ router.post('/createPayment/category', async (req, res) => {
         category
     });
    } catch (error) {
+    logger.error(error)
     return res.status(500).json({
         success: false,
         message: 'Failed to create payment category.',
@@ -46,6 +48,7 @@ router.get('/category/all', async (req, res) => {
             categories
         });
     } catch (error) {
+        logger.error(error)
         return res.status(500).json({
             success: false,
             message: 'Failed to retrieve payment categories.',
@@ -123,9 +126,9 @@ router.post('/create-payment', async (req, res) => {
             });
     
         } catch (error) {
+            logger.error(error)
             await session.abortTransaction();
             session.endSession();
-    console.log(error)
             return res.status(500).json({
                 success: false,
                 message: 'An error occurred while creating the payment.',
@@ -174,7 +177,7 @@ await existingPayment.save();
             message: 'Payment and transaction updated successfully.',
         });
     } catch (error) {
-        console.error(error);
+        logger.error(error)
         res.status(500).json({
             success: false,
             message: 'An error occurred while updating the payment.',
@@ -226,7 +229,7 @@ router.put('/reject-payment/:paymentId', async (req, res) => {
             message: 'Payment rejection updated successfully.',
         });
     } catch (error) {
-        console.error('Error in rejecting payment:', error);
+        logger.error(error)
         res.status(500).json({
             success: false,
             message: 'An error occurred while updating the payment.',
@@ -248,7 +251,7 @@ router.get('/get-payment/number', async (req, res) => {
             return res.status(200).json({ success: true, paymentNumber: newNumber });
         } 
     } catch (error) {
-       console.log(error)
+        logger.error(error)
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
@@ -261,7 +264,7 @@ router.get('/get-payment/:paymentId', async (req, res) => {
         if (!payment) throw new Error('Payment not found');
         res.status(200).json({ success: true, payment });
     } catch (error) {
-        console.error(error);
+        logger.error(error)
         res.status(500).json({
             success: false,
             message: 'An error occurred while retrieving the payment.',
@@ -276,7 +279,7 @@ router.get('/get/payments',async(req,res)=>{
         }).populate('categoryId');
         res.status(200).json({ success: true, payments });
     } catch (error) {
-        console.log(error)
+        logger.error(error)
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 })

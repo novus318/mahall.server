@@ -8,6 +8,7 @@ import kudiCollection from "../model/kudiCollection.js";
 import buildingModel from "../model/buildingModel.js";
 import staffModel from "../model/staffModel.js";
 import salaryModel from "../model/salaryModel.js";
+import logger from "../utils/logger.js";
 
 const router=express.Router()
 
@@ -63,7 +64,7 @@ router.get('/get/reciept/byDate', async (req, res) => {
         // Return the receipts
         res.status(200).json({ success: true, reciepts });
     } catch (error) {
-        console.log(error);
+        logger.error(error)
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
@@ -96,7 +97,7 @@ router.get('/get/payment/byDate', async (req, res) => {
         // Return the receipts
         res.status(200).json({ success: true, payments });
     } catch (error) {
-        console.log(error);
+        logger.error(error)
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
@@ -121,6 +122,7 @@ router.get('/get/members', async (req, res) => {
   
       res.status(200).json({ success: true, houseWithMembers });
     } catch (error) {
+    logger.error(error)
       res.status(500).json({ success: false, message: 'Error fetching members with house details', error: error.message });
     }
   });
@@ -149,6 +151,7 @@ router.get('/get/members', async (req, res) => {
             } 
             res.status(200).send({ success: true, collections });
         } catch (error) {
+            logger.error(error)
             res.status(500).send({
                 success: false, message: `Server Error: ${error}`,
                 error
@@ -170,42 +173,46 @@ router.get('/rent-collections/byDate', async (req, res) => {
         
         // Set the end date to include the entire day
         end.setHours(23, 59, 59, 999);
-      const buildings = await buildingModel.find({
-        createdAt: { $gte: start, $lte: end }
+        start.setHours(0, 0, 0, 0); 
+        const buildings = await buildingModel.find({
+          "rooms.contractHistory.rentCollection.date": { $gte: start, $lte: end }
       }).lean();
+
       const collections = [];
   
-      buildings.forEach((building) => {
-        building.rooms.forEach((room) => {
-          room.contractHistory.forEach((contract) => {
-            contract.rentCollection.forEach((collection) => {
-                collections.push({
-                  buildingID: building.buildingID,
-                  buildingId:building._id,
-                  roomId: room._id,
-                  contractId: contract._id,
-                  buildingName: building.buildingName,
-                  roomNumber: room.roomNumber,
-                  tenantName: contract.tenant.name,
-                  tenantNumber: contract.tenant.number,
-                  rent: contract.rent,
-                  rentId:collection._id,
-                  deposit: contract.deposit,
-                  period: collection.period,
-                  amount: collection.amount,
-                  dueDate: collection.date,
-                  status: collection.status,
-                  paymentDate: collection.paymentDate
+     buildings.forEach((building) => {
+            building.rooms.forEach((room) => {
+                room.contractHistory.forEach((contract) => {
+                    contract.rentCollection
+                        .filter((collection) => collection.date >= start && collection.date <= end)
+                        .forEach((collection) => {
+                            collections.push({
+                                buildingID: building.buildingID,
+                                buildingId: building._id,
+                                roomId: room._id,
+                                contractId: contract._id,
+                                buildingName: building.buildingName,
+                                roomNumber: room.roomNumber,
+                                tenantName: contract.tenant.name,
+                                tenantNumber: contract.tenant.number,
+                                rent: contract.rent,
+                                rentId: collection._id,
+                                deposit: contract.deposit,
+                                period: collection.period,
+                                amount: collection.amount,
+                                dueDate: collection.date,
+                                status: collection.status,
+                                paymentDate: collection.paymentDate
+                            });
+                        });
                 });
             });
-          });
         });
-      });
   
       collections.sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
       res.status(200).json({ success: true, collections });
     } catch (error) {
-      console.log(error)
+    logger.error(error)
       res.status(500).json({ success: false, message: 'Server Error', error });
     }
   })
@@ -238,7 +245,7 @@ router.get('/rent-collections/byDate', async (req, res) => {
       // Return the salary
       res.status(200).json({ success: true, payslips });
     } catch (error) {
-      console.log(error);
+        logger.error(error)
       res.status(500).json({ message: 'Server error', error: error.message });
     }
     });

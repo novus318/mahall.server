@@ -1,0 +1,9 @@
+{
+    "watch": ["index.js"],
+    "delay": "10",
+    "restartable": "rs",
+    "env": {
+      "NODE_ENV": "production"
+    }
+  }
+  

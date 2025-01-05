@@ -8,6 +8,7 @@ import recieptNumberModel from "../model/recieptNumberModel.js";
 import { NextReceiptNumber } from "../functions/recieptNumber.js";
 import { sendRentConfirmWhatsapp } from "../functions/generateRent.js";
 import BankModel from "../model/BankModel.js";
+import logger from "../utils/logger.js";
 const router = express.Router()
 
 
@@ -35,6 +36,7 @@ router.post('/create-building', async (req, res) => {
       message: 'Building created successfully', building: newBuilding
     });
   } catch (error) {
+    logger.error(error)
     res.status(500).json({
       success: false, message: 'Error creating building', error: error.message
     });
@@ -71,7 +73,7 @@ router.post('/add-room', async (req, res) => {
       building: building
     });
   } catch (error) {
-    console.log(error)
+    logger.error(error)
     res.status(500).json({
       success: false,
       message: 'Error adding room',
@@ -127,6 +129,7 @@ router.post('/add-contract/:buildingID/:roomId', async (req, res) => {
       message: 'Contract added successfully'
     });
   } catch (error) {
+    logger.error(error)
     res.status(500).json({
       success: false, message: 'Error adding contract', error: error.message
     });
@@ -160,7 +163,7 @@ router.put('/edit-room/:buildingID/:roomId', async (req, res) => {
       message: 'edited successfully'
     });
   } catch (error) {
-    console.log(error)
+    logger.error(error)
     res.status(500).json({
       success: false, message: 'Error editing', error: error.message
     });
@@ -203,7 +206,7 @@ router.put('/edit-contract/:buildingID/:roomId/:contractId', async (req, res) =>
       message: 'Contract edited successfully'
     });
   } catch (error) {
-    console.log(error)
+    logger.error(error)
     res.status(500).json({
       success: false, message: 'Error editing contract', error: error.message
     });
@@ -216,8 +219,11 @@ router.post('/pay-deposit/:buildingID/:roomId/:contractId', async (req, res) => 
 
   try {
     const { buildingID, roomId,contractId } = req.params;
-    const { status, paymentMethod } = req.body;
+    const { status, paymentMethod,accountId } = req.body;
 
+    if (status === 'Paid' && !accountId) {
+      return res.status(400).json({ message: 'Account ID is required for Paid status.' });
+    }
     // Find the building by ID
     const building = await buildingModel.findById(buildingID).session(session); // Use session with queries
     if (!building) {
@@ -249,11 +255,6 @@ router.post('/pay-deposit/:buildingID/:roomId/:contractId', async (req, res) => 
       };
 
       activeContract.depositCollection.push(depositTransaction);
-      const depositAccount = await BankModel.findOne({ accountType: 'deposit' }).session(session);
-      if (!depositAccount) {
-        throw new Error('Deposit account not found');
-      }
-      const accountId = depositAccount._id;
       const ref = `/rent/room-details/${building._id}/${roomId}/${contractId}`;
       const description = `Deposit from ${activeContract.tenant.name} for building ${building.buildingID} room ${room.roomNumber}`;
       const category = 'building deposit';
@@ -278,7 +279,7 @@ router.post('/pay-deposit/:buildingID/:roomId/:contractId', async (req, res) => 
     });
 
   } catch (error) {
-    // Rollback the transaction on error
+    logger.error(error)
     await session.abortTransaction();
     session.endSession();
     res.status(500).json({
@@ -349,14 +350,11 @@ router.post('/pay-advance/:buildingID/:roomId/:contractId', async (req, res) => 
       message: 'Advance paid successfully',
     });
   } catch (error) {
+    logger.error(error)
     if (session.inTransaction()) {
       await session.abortTransaction();
     }
     session.endSession();
-
-    // Log error (in real scenarios use a logger)
-    console.error(error);
-
     // Send error response
     return res.status(500).json({
       success: false,
@@ -373,15 +371,20 @@ router.post('/return-deposit/:buildingID/:roomId/:contractId', async (req, res) 
 
   try {
     const { buildingID, roomId, contractId } = req.params;
-    const { status, paymentMethod } = req.body;
+    const { status, paymentMethod,accountId } = req.body;
 
     // Validate inputs
     if (!mongoose.Types.ObjectId.isValid(buildingID) || 
         !mongoose.Types.ObjectId.isValid(roomId) || 
-        !mongoose.Types.ObjectId.isValid(contractId)) {
-      return res.status(400).json({ success: false, message: 'Invalid building, room, or contract ID' });
+        !mongoose.Types.ObjectId.isValid(contractId) ||
+        !mongoose.Types.ObjectId.isValid(accountId)
+      ) {
+      return res.status(400).json({ success: false, message: 'Invalid account ,building, room, or contract ID' });
     }
 
+    if (!accountId) {
+      return res.status(400).json({ message: 'Account ID is required for Returned status.' });
+    }
     // Find the building by ID
     const building = await buildingModel.findById(buildingID).session(session);
     if (!building) {
@@ -417,11 +420,6 @@ router.post('/return-deposit/:buildingID/:roomId/:contractId', async (req, res) 
       activeContract.depositCollection.push(depositTransaction);
 
       // Find the account to debit
-      const withdrawAccount = await BankModel.findOne({ accountType: 'deposit' }).session(session);
-      if (!withdrawAccount) {
-        throw new Error('Deposit account not found');
-      }
-      const accountId = withdrawAccount._id;
       const description = `Returned deposit for ${activeContract.tenant.name} building ${building.buildingID} room ${room.roomNumber}`;
       const category = 'building deposit';
 
@@ -447,7 +445,7 @@ router.post('/return-deposit/:buildingID/:roomId/:contractId', async (req, res) 
     // Rollback the transaction
     await session.abortTransaction();
     session.endSession();
-    console.error('Error:', error);
+    logger.error(error)
     res.status(500).json({
       success: false,
       message: 'Error updating deposit status',
@@ -467,6 +465,7 @@ router.get('/get-buildings', async (req, res) => {
     });
     res.status(200).json({ success: true, buildings });
   } catch (error) {
+    logger.error(error)
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 })
@@ -503,7 +502,7 @@ router.get('/get-ByRoom/:buildingID/:roomId/:contractId', async (req, res) => {
       roomDetails
     });
   } catch (error) {
-    console.error(error);
+    logger.error(error)
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 });
@@ -550,7 +549,7 @@ router.get('/rent-collections/pending', async (req, res) => {
     pendingCollections.sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
     res.status(200).json({ success: true, pendingCollections });
   } catch (error) {
-    console.log(error)
+    logger.error(error)
     res.status(500).json({ success: false, message: 'Server Error', error });
   }
 })
@@ -655,12 +654,11 @@ await sendRentConfirmWhatsapp(rentCollection,activeContract.tenant,room,building
     res.status(200).json({ success: true, message: 'Rent collection status updated successfully', rentCollection });
 
   } catch (error) {
+    logger.error(error)
     if (session.inTransaction()) {
       await session.abortTransaction();
     }
     session.endSession();
-
-    console.error(error);
 
     res.status(500).json({ success: false, message: 'An error occurred', error: error.message });
   }

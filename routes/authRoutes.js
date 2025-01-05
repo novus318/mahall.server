@@ -1,13 +1,15 @@
 import express  from "express";
 import jwt from "jsonwebtoken";
+import dotenv from 'dotenv'
 import PasswordModel from "../model/PasswordModel.js";
+import logger from '../utils/logger.js';
 const router=express.Router()
 
-
+dotenv.config({ path: './.env' })
+const { JWT_SECRET } = process.env;
 
 router.post('/login', async(req, res) => {
     const { pin,user } = req.body;
-    const { JWT_SECRET } = process.env;
     try {
     
         // Find user by username
@@ -27,25 +29,35 @@ router.post('/login', async(req, res) => {
     }
 }
     catch (error) {
+        logger.error(error);
         res.status(500).send({ success: false, message: 'Server Error', error: error.message });
 }});
 
 
+
 router.post('/verify', (req, res) => {
-const { token } = req.body;
-const { JWT_SECRET } = process.env;
-
-// Verify the token
-jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-        // Token is invalid or expired
-        return res.status(401).send({ success: false, message: 'Invalid or expired token' });
+    try {
+      // Validate the presence of the token in the request body
+      const { token } = req.body;
+      if (!token) {
+        return res.status(400).send({ success: false, message: 'Token is required' });
+      }
+  
+      // Verify the token
+      jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        if (err) {
+          // Token is invalid or expired
+          return res.status(401).send({ success: false, message: 'Invalid or expired token' });
+        }
+  
+        // Token is valid, return decoded payload
+        res.status(200).send({ success: true, decoded });
+      });
+    } catch (error) {
+        logger.error(error)
+      res.status(500).send({ success: false, message: 'Internal server error' });
     }
-
-    // Token is valid, you can access the decoded payload if needed
-    res.status(200).send({ success: true, decoded });
-});
-});
+  });
 
 // Password Reset Route
 router.post("/reset-password", async (req, res) => {
@@ -63,6 +75,7 @@ router.post("/reset-password", async (req, res) => {
 
         res.status(200).send({ success: true, message: "Password reset successfully" });
     } catch (error) {
+        logger.error(error)
         res.status(500).send({ success: false, message: "Server error" });
     }
 });
@@ -84,7 +97,7 @@ router.post("/register", async (req, res) => {
 
         res.status(201).send({ success: true, message: "User registered successfully",data });
     } catch (error) {
-        console.log(error)
+        logger.error(error)
         res.status(500).send({ success: false, message: "Server error" });
     }
 });

@@ -8,7 +8,7 @@ import { creditAccount } from "../functions/transaction.js";
 import { sendWhatsAppMessageFunction } from "../functions/generateMonthlyCollections.js";
 import BankModel from "../model/BankModel.js";
 import buildingModel from "../model/buildingModel.js";
-
+import logger from "../utils/logger.js";
 import { sendRentConfirmWhatsapp } from "../functions/generateRent.js";
 import houseModel from "../model/houseModel.js";
 import axios from "axios";
@@ -39,6 +39,7 @@ router.post('/create-order', async (req, res) => {
     const order = await razorpay.orders.create(options);
     res.status(200).json(order);
   } catch (error) {
+    logger.error(error)
     res.status(500).json({ message: 'Unable to create Razorpay order.', error });
   }
 })
@@ -116,7 +117,7 @@ router.post('/verify-payment', async (req, res) => {
       updatedCollection
     });
   } catch (error) {
-    console.error('Error in payment verification:', error);
+    logger.error('Error in payment verification:', error)
     await session.abortTransaction();
     res.status(500).json({ success: false, message: 'Payment verification failed', error: error.message });
   } finally {
@@ -127,7 +128,6 @@ router.post('/verify-payment', async (req, res) => {
 
 router.get('/house-collection/:recieptNo', async (req, res) => {
   const { recieptNo } = req.params;
-  console.log(recieptNo)
   try {
     if (recieptNo) {
       const houseCollection = await kudiCollection.findOne({ receiptNumber: recieptNo }).sort({ createdAt: -1 }).limit(10)
@@ -141,7 +141,7 @@ router.get('/house-collection/:recieptNo', async (req, res) => {
     }
 
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     return res.status(500).send({ success: false, message: 'Server error' });
   }
 });
@@ -170,7 +170,10 @@ router.get('/rent-collection/:buildingID/:roomId/:contractId/:rentId', async (re
     const tenant = activeContract.tenant
     return res.status(200).json({ success: true, rentCollection, tenant });
   } catch (error) {
-
+    logger.error(error);
+    return res.status(500).send({ success: false,
+      message: 'Error: ' + error
+    })
   }
 });
 
@@ -261,7 +264,7 @@ router.post('/verify/rentpayment', async (req, res) => {
       rentCollection,
     });
   } catch (error) {
-    console.error('Error in payment verification:', error);
+    logger.error('Error in payment verification:', error);
 
     // Rollback transaction in case of an error
     if (session.inTransaction()) {
@@ -375,7 +378,7 @@ router.post('/generate-payment/link', async (req, res) => {
       whatsappResponse: response.data,
     });
   } catch (error) {
-    console.error('Error:', error);
+    logger.error('Error:', error);
     return res.status(500).json({
       success: false,
       message: 'Internal Server Error',

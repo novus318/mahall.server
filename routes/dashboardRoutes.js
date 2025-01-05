@@ -1,7 +1,7 @@
 import express  from "express";
-import jwt from "jsonwebtoken";
 import BankModel from "../model/BankModel.js";
 import transactionModel from "../model/transactionModel.js";
+import logger from "../utils/logger.js";
 const router=express.Router()
 
 
@@ -17,6 +17,7 @@ router.get('/get-assets', async(req, res) => {
         const totalBalance = assets.reduce((sum, asset) => sum + asset.balance, 0).toFixed(2);
         res.status(200).json({ success: true, asset:totalBalance });
     }catch(error){
+        logger.error(error)
         res.status(500).json({
             error,
             success: false,
@@ -57,6 +58,7 @@ router.get('/get-expenses', async (req, res) => {
             percentageChange
         });
     } catch (error) {
+        logger.error(error)
         res.status(500).json({
             error,
             success: false,
@@ -98,6 +100,7 @@ router.get('/get-incomes', async (req, res) => {
             percentageChange
         });
     } catch (error) {
+        logger.error(error)
         res.status(500).json({
             error,
             success: false,
@@ -208,6 +211,7 @@ router.get('/get-income-expense-trends', async (req, res) => {
 
         res.status(200).json({ success: true, trends: trendsMap });
     } catch (error) {
+        logger.error(error)
         res.status(500).json({
             success: false,
             message: 'Error getting donation and expense trends'
@@ -253,7 +257,7 @@ router.get('/get-expense-categories', async (req, res) => {
   
       res.status(200).json(response);
     } catch (error) {
-      console.error(error);
+    logger.error(error)
       res.status(500).json({ message: "Internal server error" });
     }
   });

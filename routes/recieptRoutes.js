@@ -5,6 +5,7 @@ import recieptModel from "../model/recieptModel.js";
 import { creditAccount, deleteCreditTransaction, updateCreditTransaction } from "../functions/transaction.js";
 import recieptNumberModel from "../model/recieptNumberModel.js";
 import { NextReceiptNumber } from "../functions/recieptNumber.js";
+import logger from "../utils/logger.js";
 const router=express.Router()
 
 
@@ -28,7 +29,7 @@ router.post('/createReciept/category', async (req, res) => {
         category
     });
    } catch (error) {
-    console.log(error)
+    logger.error(error)
     return res.status(500).json({
         success: false,
         message: 'Failed to create reciept category.',
@@ -46,6 +47,7 @@ router.get('/category/all', async (req, res) => {
             categories
         });
     } catch (error) {
+        logger.error(error)
         return res.status(500).json({
             success: false,
             message: 'Failed to retrieve reciept categories.',
@@ -123,7 +125,7 @@ router.post('/create-reciept', async (req, res) => {
         });
 
     } catch (error) {
-        console.log(error)
+        logger.error(error)
         return res.status(500).json({
             error,
             success: false,
@@ -144,7 +146,7 @@ router.get('/get-reciept/number', async (req, res) => {
             return res.status(200).json({ success: true, Number: newNumber });
         } 
     } catch (error) {
-       console.log(error)
+        logger.error(error)
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
@@ -167,7 +169,7 @@ router.get('/get-reciepts', async (req, res) => {
         }).populate('categoryId memberId otherRecipient');
         res.status(200).json({ success: true, reciepts });
     } catch (error) {
-        console.log(error)
+        logger.error(error)
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 })
@@ -201,7 +203,7 @@ router.put('/update-reciept/:id', async (req, res) => {
         await reciept.save();
         res.status(200).json({ success: true, message: 'Reciept updated successfully.', reciept });
     } catch (error) {
-        console.log(error)
+        logger.error(error)
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
@@ -251,7 +253,7 @@ router.put('/reject-reciept/:id', async (req, res) => {
             message: 'Receipt rejected successfully.',
         });
     } catch (error) {
-        console.error('Error in rejecting receipt:', error);
+        logger.error(error)
         res.status(500).json({
             success: false,
             message: 'Server error. Please try again later.',

@@ -3,7 +3,7 @@ import messageModel from "../model/messageModel.js";
 import dotenv from 'dotenv'
 import axios from "axios";
 import memberModel from "../model/memberModel.js";
-
+import logger from "../utils/logger.js";
 
 const router=express.Router()
 dotenv.config({ path: '../.env' })
@@ -36,7 +36,7 @@ const downloadMedia = async (Id) => {
     throw new Error('No media URL found in the response.');
   }
 } catch (error) {
-  console.error('Error downloading media:', error.message);
+  logger.error(error)
   throw error; // Rethrow error if you want to handle it elsewhere
 }
 };
@@ -156,7 +156,7 @@ router.post('/webhook', async (req, res) => {
 
       res.sendStatus(200); // Acknowledge the request
   } catch (error) {
-      console.error('Error processing', error);
+    logger.error(error)
       res.status(500).send('Internal Server Error');
   }
 });
@@ -191,7 +191,7 @@ router.get('/messages', async (req, res) => {
       totalCount: totalCount
       ,messages});
   } catch (error) {
-    console.log(error)
+    logger.error(error)
     res.status(500).send({
       success: false
      , message: 'Server Error'
@@ -235,6 +235,7 @@ router.delete('/messages/delete', async (req, res) => {
       // Return success response
       res.status(200).json({ success:true});
   } catch (error) {
+    logger.error(error)
       res.status(500).json({ success:true,error: 'An error occurred while deleting messages.' });
   }
 });
@@ -246,7 +247,7 @@ router.get('/messages/count', async (req, res) => {
       success: true
      , count});
   } catch (error) {
-    console.log(error)
+    logger.error(error)
     res.status(500).send({
       success: false
      , message: 'Server Error'
@@ -311,7 +312,7 @@ const sendMessageToMember = async (member, newMessage, mediaId, fileType) => {
       return { success: true, member: member.name };
     }
   } catch (error) {
-    console.error(`Failed to send message to ${member.name}:`, error.message);
+    logger.error(`Failed to send message to ${member.name}:`, error.message)
     return { success: false, error: error.message };
   }
 };

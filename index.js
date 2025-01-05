@@ -1,9 +1,8 @@
 import express from "express"
 import dotenv from 'dotenv'
 import cors from 'cors'
-import path from "path"
 import morgan from "morgan"
-import cron from 'node-cron';
+// import cron from 'node-cron';
 import connectDB from "./config/db.js"
 import authRoutes from './routes/authRoutes.js'
 import houseRoutes from './routes/houseRoute.js'
@@ -12,9 +11,9 @@ import bankRoutes from './routes/bankRoutes.js'
 import staffRoutes from './routes/staffRoutes.js'
 import buildingRoutes from './routes/buildingRoutes.js'
 import transactionRoutes from './routes/transactionRoutes.js'
-import { generateMonthlyCollections } from "./functions/generateMonthlyCollections.js"
-import { generateMonthlySalaries } from "./functions/generateSalary.js"
-import { collectRent } from "./functions/generateRent.js"
+// import { generateMonthlyCollections } from "./functions/generateMonthlyCollections.js"
+// import { generateMonthlySalaries } from "./functions/generateSalary.js"
+// import { collectRent } from "./functions/generateRent.js"
 import dashboardRoutes from './routes/dashboardRoutes.js'
 import paymentRoutes from './routes/paymentRoutes.js'
 import recieptRoutes from './routes/recieptRoutes.js'

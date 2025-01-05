@@ -8,6 +8,7 @@ import { sendWhatsAppMessageFunction } from "../functions/generateMonthlyCollect
 import { creditAccount } from "../functions/transaction.js";
 import recieptNumberModel from "../model/recieptNumberModel.js";
 import { NextReceiptNumber } from "../functions/recieptNumber.js";
+import logger from "../utils/logger.js";
 const router = express.Router()
 
 
@@ -112,6 +113,7 @@ router.post('/create-house', async (req, res) => {
 
         res.status(200).send({ success: true, house: savedHouse });
     } catch (error) {
+        logger.error(error)
         res.status(500).send({ success: false, message: 'Server Error' });
     }
 });
@@ -132,8 +134,8 @@ router.put('/edit-house', async (req, res) => {
         if (!updatedHouse) return res.status(404).send({ success: false, message: 'House not found' });
         res.status(200).send({ success: true, house: updatedHouse });
     } catch (error) {
+        logger.error(error)
         res.status(500).send({ success: false, message: 'Server Error' });
-        console.log(error)
     }
 });
 
@@ -144,6 +146,7 @@ router.get('/get/:pid', async (req, res) => {
         if (!house) return res.status(404).send({ success: false, message: 'House not found' });
         res.status(200).send({ success: true, house });
     } catch (error) {
+        logger.error(error)
         res.status(500).send({ success: false, message: 'Server Error' });
     }
 });
@@ -155,7 +158,7 @@ router.get('/get', async (req, res) => {
         }).populate('familyHead');
         res.status(200).send({ success: true, houses });
     } catch (error) {
-        console.log(error)
+        logger.error(error)
         res.status(500).send({ success: false, message: 'Server Error' });
     }
 });
@@ -167,6 +170,7 @@ router.get('/get-all', async (req, res) => {
         }).populate('familyHead');
         res.status(200).send({ success: true, houses });
     } catch (error) {
+        logger.error(error)
         res.status(500).send({ success: false, message: 'Server Error' });
     }
 });
@@ -177,8 +181,10 @@ router.get('/get/pending/collections', async (req, res) => {
         const pendingCollections = await kudiCollection.find({ status: 'Unpaid' }).sort({
             createdAt: -1,
         }).populate('memberId houseId')
+
         res.status(200).send({ success: true, houses: pendingCollections });
     } catch (error) {
+        logger.error(error)
         res.status(500).send({
             success: false, message: `Server Error: ${error}`,
             error
@@ -191,8 +197,10 @@ router.get('/get/paid/collections', async (req, res) => {
         const paidCollections = await kudiCollection.find({ status: 'Paid' }).sort({
             createdAt: -1,
         }).populate('memberId houseId').limit(50)
+
         res.status(200).send({ success: true, houses: paidCollections });
     } catch (error) {
+        logger.error(error)
         res.status(500).send({
             success: false, message: `Server Error: ${error}`,
             error
@@ -222,7 +230,7 @@ router.put('/reject/collection/:id', async (req, res) => {
      
         res.status(200).send({ success: true, message: 'Kudi collection rejected successfully', data: updatedCollection });
     } catch (error) {
-        console.error('Error rejecting kudi collection:', error);
+        logger.error(error)
         res.status(500).send({ success: false, message: 'Server Error' });
     }
 });
@@ -289,7 +297,7 @@ router.put('/update/collection/:id', async (req, res) => {
 
         res.status(200).send({ success: true, message: 'Kudi collection updated successfully', data: updatedCollection });
     } catch (error) {
-        console.error('Error updating kudi collection:', error);
+        logger.error(error)
 
         // Rollback the transaction on error
         await session.abortTransaction();
@@ -310,7 +318,7 @@ router.get('/kudi-collections/:memberId', async (req, res) => {
             .populate('houseId');
         res.status(200).json({ success: true, collections });
     } catch (error) {
-        console.error('Error fetching kudi collections by memberId:', error);
+        logger.error(error)
         res.status(500).json({ success: false, message: 'Server error. Could not fetch kudi collections.' });
     }
 });
@@ -347,7 +355,7 @@ router.get('/kudi-contribution/:houseId', async (req, res) => {
     });
 
     } catch (error) {
-        console.error('Error fetching kudi contributions:', error);
+        logger.error(error)
         res.status(500).json({
             success: false,
             message: 'An error occurred while fetching kudi contributions.'
@@ -364,7 +372,7 @@ async function getLastCollectionReceiptNumber() {
             throw new Error('No receipt number found');
         }
     } catch (error) {
-        console.error('Error retrieving last collection receipt number:', error);
+        logger.error(error)
         throw error;
     }
 }
@@ -420,7 +428,7 @@ router.post('/generateManualCollections/:houseId', async (req, res) => {
             await house.save();
             res.status(200).json({success:true, message: 'Manual collections generated successfully.' });
         } catch (error) {
-            console.error('Error generating manual collections:', error);
+            logger.error(error)
             res.status(500).json({ message: 'Error generating manual collections.',
                 error,
             success:false });

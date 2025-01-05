@@ -1,6 +1,7 @@
 import express  from "express";
 import recieptNumberModel from "../model/recieptNumberModel.js";
 import { NextReceiptNumber } from "../functions/recieptNumber.js";
+import logger from "../utils/logger.js";
 const router=express.Router()
 
 
@@ -24,7 +25,7 @@ const result = await recieptNumberModel.updateOne({}, {
 // Respond with success
 res.status(200).json({success:true, message: 'Receipt number reset successfully', result });
 } catch (error) {
-console.log(error)
+logger.error(error)
 res.status(500).json({ success:false, message: 'Error resetting receipt numbers', error });
 }
 })
@@ -47,7 +48,7 @@ const result = await recieptNumberModel.updateOne({}, {
 // Respond with success
 res.status(200).json({success:true, message: 'Receipt number reset successfully', result });
 } catch (error) {
-console.log(error)
+logger.error(error)
 res.status(500).json({ success:false, message: 'Error resetting receipt numbers', error });
 }
 })
@@ -70,7 +71,7 @@ const result = await recieptNumberModel.updateOne({}, {
 // Respond with success
 res.status(200).json({success:true, message: 'Receipt number reset successfully', result });
 } catch (error) {
-console.log(error)
+logger.error(error)
 res.status(500).json({ success:false, message: 'Error resetting receipt numbers', error });
 }
 })
@@ -87,7 +88,7 @@ router.get('/get-collection/number', async (req, res) => {
             return res.status(200).json({ success: true, Number: newNumber });
         } 
     } catch (error) {
-       console.log(error)
+        logger.error(error)
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });

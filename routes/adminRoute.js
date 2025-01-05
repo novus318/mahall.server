@@ -1,6 +1,7 @@
 import express from 'express';
 import { promises as fs } from 'fs';
 import path from 'path';
+import logger from '../utils/logger';
 
 const router = express.Router();
 
@@ -27,7 +28,7 @@ router.get('/get-numbers', async (req, res) => {
         const numbers = await readNumbers();
         res.status(200).json(numbers);
     } catch (error) {
-        console.error(error);
+        logger.error(error)
         res.status(500).json({ message: 'Failed to retrieve numbers' });
     }
 });
@@ -57,7 +58,7 @@ router.post('/add-number', async (req, res) => {
 
         res.status(200).json({ message: 'Number added successfully', newNumberObject });
     } catch (error) {
-        console.error(error);
+        logger.error(error)
         res.status(500).json({ message: 'Failed to add number' });
     }
 });
@@ -92,7 +93,7 @@ router.put('/update-number', async (req, res) => {
 
         res.status(200).json({ message: 'Number updated successfully', updatedNumber: numbers[index] });
     } catch (error) {
-        console.error(error);
+        logger.error(error)
         res.status(500).json({ message: 'Failed to update number' });
     }
 });
@@ -115,7 +116,7 @@ router.delete('/delete-number', async (req, res) => {
 
         res.status(200).json({ message: 'Number deleted successfully' });
     } catch (error) {
-        console.error(error);
+        logger.error(error)
         res.status(500).json({ message: 'Failed to delete number' });
     }
 });
@@ -149,7 +150,7 @@ router.post('/add-place', async (req, res) => {
         places: data.places,
       });
     } catch (error) {
-      console.error(error);
+        logger.error(error)
       res.status(500).json({ message: 'Failed to add place' });
     }
   });
@@ -159,7 +160,7 @@ router.get('/get-places', async (req, res) => {
         const places = await readPlaces();
         res.status(200).json(places.places);
     } catch (error) {
-        console.error(error);
+        logger.error(error)
         res.status(500).json({ message: 'Failed to retrieve places' });
     }
 });

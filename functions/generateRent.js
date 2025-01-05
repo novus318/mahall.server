@@ -1,7 +1,7 @@
 import axios from "axios";
-import BankModel from "../model/BankModel.js";
 import buildingModel from "../model/buildingModel.js";
 import dotenv from 'dotenv'
+import logger from "../utils/logger.js";
 
 dotenv.config({ path: './.env' })
 const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL;
@@ -56,9 +56,9 @@ export const collectRent = async () => {
       await building.save(); 
     }
 
-    console.log("Rent collection completed successfully.");
+    logger.info("Rent collection completed successfully.");
   } catch (error) {
-    console.error("Error collecting rent:", error);
+    logger.error("Error collecting rent:", error);
   }
 };
 
@@ -103,9 +103,9 @@ const sendWhatsapp = async (rentCollection, tenant,room,building,contract) => {
             }
         }
     );
-    console.log('WhatsApp message sent successfully:', response.data);
+    logger.info('WhatsApp message sent successfully:', response.data);
 } catch (error) {
-    console.error('Error sending WhatsApp message:', error);
+    logger.error('Error sending WhatsApp message:', error);
 }
 };
 
@@ -150,9 +150,9 @@ export const sendRentConfirmWhatsapp = async (rentCollection, tenant,room,buildi
             }
         }
     );
-    console.log('WhatsApp message sent successfully:', response.data);
+    logger.info('WhatsApp message sent successfully:', response.data);
 } catch (error) {
-    console.error('Error sending WhatsApp message:', error);
+    logger.error('Error sending WhatsApp message:', error);
 }
 };
 

@@ -307,12 +307,13 @@ router.post('/generate-payment/link', async (req, res) => {
       });
     }
 
+    const today = new Date()
     // Generate payment link
     const paymentLinkData = {
       amount: amount * 100, // Convert to paisa (smallest currency unit)
       currency: 'INR',
       accept_partial: true,
-      reference_id: houseDetails.number,
+      reference_id: `${houseDetails.number}-${today.getFullYear()}-${today.toLocaleString('default', { month: 'long' })}-${today.toLocaleString('default', { weekday: 'long' })}`,
       description: `Payment for house ${houseDetails.number}`,
       customer: {
         name: familyHead.name,
@@ -330,63 +331,69 @@ router.post('/generate-payment/link', async (req, res) => {
 
     const shortUrlPart = paymentLink.short_url.replace('https://rzp.io', '');
 
-    // Send payment link to WhatsApp
-    const response = await axios.post(
-      WHATSAPP_API_URL,
-      {
-        messaging_product: 'whatsapp',
-        to: familyHead.whatsappNumber,
-        type: 'template',
-        template: {
-          name: 'payment_link_generate', 
-          language: {
-            code: 'ml', 
+    try {
+      const whatsappResponse = await axios.post(
+        WHATSAPP_API_URL,
+        {
+          messaging_product: 'whatsapp',
+          to: familyHead.whatsappNumber,
+          type: 'template',
+          template: {
+            name: 'payment_link_generate', // Replace with your WhatsApp template name
+            language: {
+              code: 'ml', // Replace with appropriate language code
+            },
+            components: [
+              {
+                type: 'body',
+                parameters: [
+                  { type: 'text', text: `${familyHead.name}` },
+                  { type: 'text', text: `${amount}` },
+                ],
+              },
+              {
+                type: 'button',
+                sub_type: 'url',
+                index: 0,
+                parameters: [
+                  { type: 'text', text: shortUrlPart },
+                ],
+              },
+            ],
           },
-          components: [
-            {
-              type: 'body',
-              parameters: [
-                { type: 'text',
-                  text: `${familyHead.name}` },
-                { type: 'text',
-                  text: `${amount}` },
-              ],
-            },
-            {
-              type: 'button',
-              sub_type: 'url',
-              index: 0,
-              parameters: [
-                { type: 'text', text: shortUrlPart },
-              ],
-            },
-          ],
         },
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${ACCESS_TOKEN}`, // Replace with your access token
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+        {
+          headers: {
+            Authorization: `Bearer ${ACCESS_TOKEN}`, // Replace with your access token
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
-    return res.status(200).json({
-      success: true,
-      message: 'Payment link generated and sent via WhatsApp successfully',
-      link: paymentLink.short_url,
-      whatsappResponse: response.data,
-    });
+      return res.status(200).json({
+        success: true,
+        message: 'Payment link generated and sent via WhatsApp successfully',
+        link: paymentLink.short_url,
+        whatsappResponse: whatsappResponse.data,
+      });
+    } catch (whatsappError) {
+      logger.error(`WhatsApp API Error:`,whatsappError.error.message);
+      return res.status(500).json({
+        success: false,
+        message: 'Payment link generated, but failed to send via WhatsApp',
+        link: paymentLink.short_url,
+        whatsappError: whatsappError.response?.data || whatsappError.message,
+      });
+    }
   } catch (error) {
-    logger.error('Error:', error);
+    logger.error(`Error generating payment link: ${error.message  || error}`);
     return res.status(500).json({
       success: false,
-      message: 'Internal Server Error',
+      message: `Internal Server Error`,
       error: error.message,
     });
   }
 });
-
 
 
 

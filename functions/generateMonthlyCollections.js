@@ -1,11 +1,11 @@
 import axios from "axios";
 import dotenv from 'dotenv'
-import BankModel from "../model/BankModel.js";
 import houseModel from "../model/houseModel.js";
 import kudiCollection from "../model/kudiCollection.js";
 import receiptNumberModel from "../model/recieptNumberModel.js";
 import { NextReceiptNumber } from "./recieptNumber.js";
 import recieptNumberModel from "../model/recieptNumberModel.js";
+import logger from "../utils/logger.js";
 
 dotenv.config({ path: './.env' })
 const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL;
@@ -20,7 +20,7 @@ async function getLastCollectionReceiptNumber() {
             throw new Error('No receipt number found');
         }
     } catch (error) {
-        console.error('Error retrieving last collection receipt number:', error);
+        logger.error('Error retrieving last collection receipt number:', error);
         throw error;
     }
 }
@@ -36,7 +36,7 @@ export const generateMonthlyCollections = async () => {
         for (const house of houses) {
             // Skip if the month is already in paidMonths
             if (house.paidMonths.includes(lastMonthKey)) {
-                console.log(`Skipped ${house.name} - Collection for ${lastMonthKey} already paid`);
+                logger.info(`Skipped ${house.name} - Collection for ${lastMonthKey} already paid`);
                 continue;
             }
 
@@ -81,9 +81,9 @@ export const generateMonthlyCollections = async () => {
             await new Promise(resolve => setTimeout(resolve, 5000));
         }
 
-        console.log('Monthly collections created for all houses');
+        logger.info('Monthly collections created for all houses');
     } catch (error) {
-        console.error('Error creating monthly collections:', error);
+        logger.error('Error creating monthly collections:', error);
     }
 };
 
@@ -129,9 +129,9 @@ const sendWhatsAppMessage = async (house,month) => {
                 }
             }
         );
-        console.log('WhatsApp message sent successfully:', response.data);
+        logger.info('WhatsApp message sent successfully:', response.data);
     } catch (error) {
-        console.error('Error in sending WhatsApp message:', error.response);
+        logger.error('Error in sending WhatsApp message:', error.response);
     }
 };
 
@@ -188,10 +188,10 @@ export const sendWhatsAppMessageFunction = async (collection) => {
                 }
             }
         );
-        console.log('WhatsApp message sent successfully:', response.data.messages);
+        logger.info('WhatsApp message sent successfully:', response.data.messages);
 
     } catch (error) {
-        console.log(error.response.data)
+        logger.error(error.response.data)
     }
 };
 

@@ -2,6 +2,7 @@ import axios from "axios";
 import salaryModel from "../model/salaryModel.js";
 import staffModel from "../model/staffModel.js";
 import dotenv from 'dotenv'
+import logger from "../utils/logger.js";
 
 dotenv.config({ path: './.env' })
 const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL;
@@ -36,9 +37,9 @@ export const generateMonthlySalaries = async () => {
             await salary.save();
         }
 
-        console.log('Monthly salary created for all active staffs');
+        logger.info('Monthly salary created for all active staffs');
     } catch (error) {
-        console.error('Error creating monthly salary:', error);
+        logger.error('Error creating monthly salary:', error);
     }
 };
 
@@ -88,9 +89,9 @@ const formattedNetPay = netPay.toLocaleString(undefined, { minimumFractionDigits
                 }
             }
         );
-        console.log('WhatsApp message sent successfully:', response.data);
+        logger.info('WhatsApp message sent successfully:', response.data);
     } catch (error) {
-        console.error('Error sending WhatsApp message:', error);
+        logger.error('Error sending WhatsApp message:', error);
     }
 };
 

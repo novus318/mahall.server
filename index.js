@@ -22,6 +22,7 @@ import settingRoutes from './routes/settingRoutes.js'
 import reportRoutes from './routes/reportRoutes.js'
 import adminRoute from './routes/adminRoute.js'
 import razorpayRoute from './routes/razorpayRoute.js'
+import logger from "./utils/logger.js"
 
 
 
@@ -119,7 +120,7 @@ app.use((req, res, next) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error("Global Error Handler:", err.stack || err);
+  logger.error("Global Error Handler:", err.stack || err);
 
   res.status(err.status || 500).json({
     success: false,

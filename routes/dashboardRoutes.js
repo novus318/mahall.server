@@ -58,7 +58,7 @@ router.get('/get-expenses', async (req, res) => {
             percentageChange
         });
     } catch (error) {
-        logger.error(error)
+        logger.error('Error fetching expenses',error)
         res.status(500).json({
             error,
             success: false,
@@ -118,6 +118,7 @@ router.get('/get-transactions', async (req, res) => {
         .limit(50).populate('accountId');
         res.status(200).json({ success: true, recentTransactions });
     }catch{
+        logger.error(error)
         res.status(500).json({
             success: false,
             message: 'Error getting recent transactions'

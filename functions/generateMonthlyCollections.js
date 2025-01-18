@@ -31,7 +31,8 @@ export const generateMonthlyCollections = async () => {
         lastMonth.setMonth(lastMonth.getMonth() - 1);
         const lastMonthKey = `${lastMonth.getFullYear()}-${lastMonth.getMonth() + 1}`;
 
-        const houses = await houseModel.find().populate('familyHead');
+        // Fetch only houses with paymentType 'monthly'
+        const houses = await houseModel.find({ paymentType: 'monthly' }).populate('familyHead');
 
         for (const house of houses) {
             // Skip if the month is already in paidMonths
@@ -53,7 +54,7 @@ export const generateMonthlyCollections = async () => {
                     name: 'Kudi collection',
                     description: `Monthly collection for ${house.familyHead?.name || 'the house'}`,
                 },
-                collectionMonth:`${lastMonth.getFullYear()} - ${lastMonth.toLocaleString('default', { month: 'long' })}`,
+                collectionMonth: `${lastMonth.getFullYear()} - ${lastMonth.toLocaleString('default', { month: 'long' })}`,
                 memberId: house.familyHead?._id,
                 houseId: house._id,
                 status: 'Unpaid',
@@ -81,7 +82,7 @@ export const generateMonthlyCollections = async () => {
             await new Promise(resolve => setTimeout(resolve, 5000));
         }
 
-        logger.info('Monthly collections created for all houses');
+        logger.info('Monthly collections created for all houses with paymentType "monthly"');
     } catch (error) {
         logger.error('Error creating monthly collections:', error);
     }

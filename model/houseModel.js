@@ -32,8 +32,17 @@ const houseSchema = new mongoose.Schema({
    paidMonths: {
       type: [String],
       default: [],
-  },
-   rationsStatus:String,
+   },
+   paidYears: {
+      type: [String],
+      default: [],
+   },
+   paymentType: {
+      type: String,
+      enum: ['monthly', 'yearly'],
+      default: 'monthly',
+   },
+   rationsStatus: String,
 }, { timestamps: true });
 
 export default mongoose.model('house', houseSchema);

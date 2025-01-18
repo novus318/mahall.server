@@ -23,6 +23,7 @@ import reportRoutes from './routes/reportRoutes.js'
 import adminRoute from './routes/adminRoute.js'
 import razorpayRoute from './routes/razorpayRoute.js'
 import logger from "./utils/logger.js"
+import { generateYearlyCollections } from "./functions/generateYearlyCollection.js"
 
 
 
@@ -43,6 +44,7 @@ app.use(morgan('dev'))
 //database configcon
 connectDB();
 
+// generateYearlyCollections()
  // generateMonthlyCollections()
 //  generateMonthlySalaries()
 // collectRent()

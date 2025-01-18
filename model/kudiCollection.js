@@ -30,9 +30,9 @@ const kudiCollectionSchema = new mongoose.Schema({
             required: false // Optional description for the category
         }
     },
-   collectionMonth: {
-    type: String,
-   },
+    collectionMonth: {
+        type: String,
+    },
     kudiCollectionType: {
         type: String,
         enum: ['Online', 'Cash'], // Type of kudiCollection: Online or Cash
@@ -47,19 +47,38 @@ const kudiCollectionSchema = new mongoose.Schema({
         ref: 'house',
         required: true
     },
-    status:{
+    status: {
         type: String,
-        enum: ['Paid', 'Unpaid', 'Rejected'],
+        enum: ['Paid', 'Unpaid', 'Rejected', 'Partial'],
         required: true
     },
-    rejectionReason :{
+    rejectionReason: {
         type: String,
     },
     receiptNumber: {
         type: String,
-        unique: true 
+        unique: true
+    },
+    paymentType: {
+        type: String,
+        enum: ['monthly', 'yearly'],
+        default: 'monthly'
+    },
+    paidYear: {
+        type: String, // Track the year for which the payment is made
+    },
+    partialPayment: {
+        type: Boolean, // Indicate if the payment is partial (only for yearly payments)
+        default: false
+    },
+    totalAmount: {
+        type: Number,
+    },
+    paidAmount: {
+        type: Number, // Amount paid so far for the year (only for yearly payments)
+        default: 0
     }
-}, { timestamps: true }); 
+}, { timestamps: true });
 
 // Export the model
 export default mongoose.model('kudiCollection', kudiCollectionSchema);

@@ -312,14 +312,33 @@ router.get('/kudi-collections/:memberId', async (req, res) => {
     try {
         const { memberId } = req.params;
 
-        // Find kudi collections by memberId
-        const collections = await kudiCollection.find({ memberId }).sort({ createdAt: -1 }).limit(20)
+        // Find kudi collections by memberId and populate memberId and houseId
+        const collections = await kudiCollection
+            .find({ memberId })
+            .sort({ createdAt: -1 })
+            .limit(20)
             .populate('memberId')
             .populate('houseId');
-        res.status(200).json({ success: true, collections });
+
+        // Calculate total paid amount using forEach
+        let totalPaidAmount = 0;
+        collections.forEach((collection) => {
+            if (collection.status === 'Paid') {
+                totalPaidAmount += collection.amount;
+            }
+        });
+
+        res.status(200).json({
+            success: true,
+            collections,
+            totalCollections:totalPaidAmount,
+        });
     } catch (error) {
-        logger.error(error)
-        res.status(500).json({ success: false, message: 'Server error. Could not fetch kudi collections.' });
+        logger.error(error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error. Could not fetch kudi collections.',
+        });
     }
 });
 

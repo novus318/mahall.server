@@ -48,11 +48,11 @@ const logger = createLogger({
     timestamp(),
     customFormat
   ),
-  transports: [
-    new transports.Console(), // Logs to console
-    new transports.File({ filename: 'logs/error.log', level: 'error' }), // Logs errors to file
-    new transports.File({ filename: 'logs/combined.log' }) // Logs all messages to file
-  ],
+  // transports: [
+  //   new transports.Console(), // Logs to console
+  //   new transports.File({ filename: 'logs/error.log', level: 'error' }), // Logs errors to file
+  //   new transports.File({ filename: 'logs/combined.log' }) // Logs all messages to file
+  // ],
 });
 
 // Listen for 'error' level logs and send an email

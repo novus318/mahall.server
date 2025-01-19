@@ -455,6 +455,50 @@ router.post('/generateManualCollections/:houseId', async (req, res) => {
 });
 
 
+router.post('/change-paymentType', async (req, res) => {
+    try {
+        const { houseId, newPaymentType } = req.body;
+
+        // Check if the house exists
+        const house = await houseModel.findById(houseId);
+        if (!house) {
+            return res.status(404).json({
+                success: false,
+                message: 'House not found',
+            });
+        }
+
+        // Check for pending collections
+        const pendingCollections = await kudiCollection.find({
+            houseId: houseId,
+            status: { $ne: 'Paid' },
+        });
+
+        if (pendingCollections.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot change payment type due to pending collections',
+            });
+        }
+
+        // Update the payment type
+        house.paymentType = newPaymentType;
+        await house.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Payment type updated successfully',
+            data: house,
+        });
+    } catch (error) {
+        logger.error('Error in /change-paymentType:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: error.message,
+        });
+    }
+});
 
 
 export default router

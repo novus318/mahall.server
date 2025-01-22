@@ -329,3 +329,8 @@
 2025-01-18T09:19:34.962Z [error]: Error sending email: getaddrinfo ENOTFOUND smtp.gmail.com
 2025-01-18T09:40:07.313Z [error]: read ETIMEDOUT
 2025-01-18T09:51:42.576Z [error]: Error creating yearly collections: getLastCollectionReceiptNumber is not defined
+2025-01-20T03:05:59.770Z [error]: read ETIMEDOUT
+2025-01-20T14:31:12.696Z [error]: Error creating yearly collections: status is not defined
+2025-01-20T16:30:23.835Z [error]: read ETIMEDOUT
+2025-01-20T16:33:15.738Z [error]: True is not defined
+2025-01-20T16:40:15.202Z [error]: read ETIMEDOUT

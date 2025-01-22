@@ -55,12 +55,11 @@ export const generateYearlyCollections = async () => {
                 paidYear: currentYearKey,
                 memberId: house.familyHead?._id,
                 houseId: house._id,
-                status: status,
+                status: 'Unpaid',
                 receiptNumber: newReceiptNumber,
                 paymentType: 'yearly',
                 totalAmount: remainingAmount,
                 paidAmount: 0,
-                partialPayment: status === 'Unpaid',
             });
 
             // Update the receipt number tracker
@@ -76,7 +75,7 @@ export const generateYearlyCollections = async () => {
             house.paidYears.push(currentYearKey);
             await house.save();
 
-            // await sendWhatsAppMessage(house, `Year ${currentYear}`);
+            await sendWhatsAppMessage(house, `${currentYear}`);
 
             // Wait before processing the next house
             await new Promise(resolve => setTimeout(resolve, 5000));
@@ -88,49 +87,49 @@ export const generateYearlyCollections = async () => {
     }
 };
 
-// const sendWhatsAppMessage = async (house,month) => {
-//     try {
-//         const response = await axios.post(
-//             WHATSAPP_API_URL,
-//             {
-//                 messaging_product: 'whatsapp',
-//                 to: `${house.familyHead.whatsappNumber}`,
-//                 type: 'template',
-//                 template: {
-//                     name: 'collection',
-//                     language: {
-//                         code: 'ml' 
-//                     },
-//                     components: [
-//                         {
-//                             type: 'body',
-//                             parameters: [
-//                                 { type: 'text', text: house.familyHead.name }, 
-//                                 { type: 'text', text: month },   
-//                                 { type: 'text', text: house.number },
-//                                 { type: 'text', text: house.collectionAmount },
-//                             ]
-//                         },
-//                         {
-//                             type: 'button',
-//                             sub_type: 'url',
-//                             index: '0',
-//                             parameters: [
-//                                 { type: 'text', text: `${house.familyHead._id}` }  
-//                             ]
-//                         }
-//                     ]
-//                 }
-//             },
-//             {
-//                 headers: {
-//                     'Authorization': `Bearer ${ACCESS_TOKEN}`,
-//                     'Content-Type': 'application/json'
-//                 }
-//             }
-//         );
-//         logger.info('WhatsApp message sent successfully:', response.data);
-//     } catch (error) {
-//         logger.error('Error in sending WhatsApp message:', error.response);
-//     }
-// };
+const sendWhatsAppMessage = async (house,month) => {
+    try {
+        const response = await axios.post(
+            WHATSAPP_API_URL,
+            {
+                messaging_product: 'whatsapp',
+                to: `${house.familyHead.whatsappNumber}`,
+                type: 'template',
+                template: {
+                    name: 'yearly_collection',
+                    language: {
+                        code: 'ml' 
+                    },
+                    components: [
+                        {
+                            type: 'body',
+                            parameters: [
+                                { type: 'text', text: house.familyHead.name }, 
+                                { type: 'text', text: month },   
+                                { type: 'text', text: house.number },
+                                { type: 'text', text: house.collectionAmount },
+                            ]
+                        },
+                        {
+                            type: 'button',
+                            sub_type: 'url',
+                            index: '0',
+                            parameters: [
+                                { type: 'text', text: `${house.familyHead._id}` }  
+                            ]
+                        }
+                    ]
+                }
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        logger.info('WhatsApp message sent successfully:', response.data);
+    } catch (error) {
+        logger.error('Error in sending WhatsApp message:', error.response);
+    }
+};

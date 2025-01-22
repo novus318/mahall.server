@@ -367,3 +367,53 @@
 2025-01-18T14:07:17.832Z [info]: Skipped Payyannur - Collection for 2025 already paid
 2025-01-18T14:07:17.833Z [info]: Yearly collections created for all houses with paymentType "yearly"
 2025-01-18T16:55:43.367Z [info]: [37m[42mConnection established with ac-inopvru-shard-00-02.mm92f02.mongodb.net[49m[39m
+2025-01-20T02:49:16.843Z [info]: [37m[42mConnection established with ac-inopvru-shard-00-01.mm92f02.mongodb.net[49m[39m
+2025-01-20T02:50:56.096Z [info]: WhatsApp message sent successfully:
+2025-01-20T02:54:10.039Z [info]: [37m[42mConnection established with ac-inopvru-shard-00-02.mm92f02.mongodb.net[49m[39m
+2025-01-20T02:54:39.488Z [info]: WhatsApp message sent successfully:
+2025-01-20T02:58:39.798Z [info]: [37m[42mConnection established with ac-inopvru-shard-00-01.mm92f02.mongodb.net[49m[39m
+2025-01-20T03:04:23.656Z [info]: WhatsApp message sent successfully:
+2025-01-20T03:05:59.770Z [error]: read ETIMEDOUT
+2025-01-20T03:06:02.496Z [info]: Email sent:
+2025-01-20T14:24:36.118Z [info]: [37m[42mConnection established with ac-inopvru-shard-00-00.mm92f02.mongodb.net[49m[39m
+2025-01-20T14:25:24.322Z [info]: [37m[42mConnection established with ac-inopvru-shard-00-00.mm92f02.mongodb.net[49m[39m
+2025-01-20T14:25:24.750Z [info]: Skipped Payyannur - Collection for 2025 already paid
+2025-01-20T14:25:24.751Z [info]: Yearly collections created for all houses with paymentType "yearly"
+2025-01-20T14:26:03.703Z [info]: [37m[42mConnection established with ac-inopvru-shard-00-00.mm92f02.mongodb.net[49m[39m
+2025-01-20T14:26:04.126Z [info]: Skipped Payyannur - Collection for 2025 already paid
+2025-01-20T14:26:04.126Z [info]: Yearly collections created for all houses with paymentType "yearly"
+2025-01-20T14:30:46.861Z [info]: WhatsApp message sent successfully:
+2025-01-20T14:31:11.902Z [info]: [37m[42mConnection established with ac-inopvru-shard-00-00.mm92f02.mongodb.net[49m[39m
+2025-01-20T14:31:12.696Z [error]: Error creating yearly collections: status is not defined
+2025-01-20T14:31:15.771Z [info]: Email sent:
+2025-01-20T14:34:47.884Z [info]: [37m[42mConnection established with ac-inopvru-shard-00-02.mm92f02.mongodb.net[49m[39m
+2025-01-20T14:34:53.598Z [info]: Skipped Payyannur - Collection for 2025 already paid
+2025-01-20T14:34:53.599Z [info]: Yearly collections created for all houses with paymentType "yearly"
+2025-01-20T15:04:59.687Z [info]: [37m[42mConnection established with ac-inopvru-shard-00-01.mm92f02.mongodb.net[49m[39m
+2025-01-20T15:05:00.164Z [info]: Skipped naseema's - Collection for 2025 already paid
+2025-01-20T15:05:00.164Z [info]: Skipped Payyannur - Collection for 2025 already paid
+2025-01-20T15:05:00.165Z [info]: Yearly collections created for all houses with paymentType "yearly"
+2025-01-20T15:05:33.171Z [info]: WhatsApp message sent successfully:
+2025-01-20T15:08:02.286Z [info]: WhatsApp message sent successfully:
+2025-01-20T15:09:05.101Z [info]: WhatsApp message sent successfully:
+2025-01-20T16:22:32.760Z [info]: [37m[42mConnection established with ac-inopvru-shard-00-00.mm92f02.mongodb.net[49m[39m
+2025-01-20T16:22:34.348Z [info]: Skipped naseema's - Collection for 2025 already paid
+2025-01-20T16:22:34.348Z [info]: Skipped Payyannur - Collection for 2025 already paid
+2025-01-20T16:22:34.349Z [info]: Yearly collections created for all houses with paymentType "yearly"
+2025-01-20T16:30:23.835Z [error]: read ETIMEDOUT
+2025-01-20T16:30:27.323Z [info]: Email sent:
+2025-01-20T16:33:15.738Z [error]: True is not defined
+2025-01-20T16:33:18.635Z [info]: Email sent:
+2025-01-20T16:33:56.117Z [info]: [37m[42mConnection established with ac-inopvru-shard-00-01.mm92f02.mongodb.net[49m[39m
+2025-01-20T16:34:02.783Z [info]: Skipped naseema's - Collection for 2025 already paid
+2025-01-20T16:34:02.784Z [info]: Skipped Payyannur - Collection for 2025 already paid
+2025-01-20T16:34:11.412Z [info]: Yearly collections created for all houses with paymentType "yearly"
+2025-01-20T16:34:21.409Z [info]: WhatsApp message sent successfully:
+2025-01-20T16:38:05.877Z [info]: WhatsApp message sent successfully:
+2025-01-20T16:40:15.202Z [error]: read ETIMEDOUT
+2025-01-20T16:40:18.500Z [info]: Email sent:
+2025-01-20T17:02:42.956Z [info]: [37m[42mConnection established with cluster0-shard-00-02.bmb9e.mongodb.net[49m[39m
+2025-01-20T17:02:43.003Z [info]: Yearly collections created for all houses with paymentType "yearly"
+2025-01-20T17:03:08.046Z [info]: [37m[42mConnection established with cluster0-shard-00-02.bmb9e.mongodb.net[49m[39m
+2025-01-20T17:07:11.420Z [info]: [37m[42mConnection established with ac-inopvru-shard-00-00.mm92f02.mongodb.net[49m[39m
+2025-01-22T14:16:14.418Z [info]: [37m[42mConnection established with ac-inopvru-shard-00-00.mm92f02.mongodb.net[49m[39m

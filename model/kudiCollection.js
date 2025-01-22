@@ -65,10 +65,10 @@ const kudiCollectionSchema = new mongoose.Schema({
         default: 'monthly'
     },
     paidYear: {
-        type: String, // Track the year for which the payment is made
+        type: String,
     },
     partialPayment: {
-        type: Boolean, // Indicate if the payment is partial (only for yearly payments)
+        type: Boolean,
         default: false
     },
     totalAmount: {
@@ -77,7 +77,23 @@ const kudiCollectionSchema = new mongoose.Schema({
     paidAmount: {
         type: Number, // Amount paid so far for the year (only for yearly payments)
         default: 0
-    }
+    },
+    partialPayments: [{
+        amount: {
+            type: Number,
+            required: true
+        },
+        paymentDate: {
+            type: Date,
+            default: Date.now
+        },
+        description: {
+            type: String,
+        },
+        receiptNumber: {
+            type: String,
+        }
+    }]
 }, { timestamps: true });
 
 // Export the model

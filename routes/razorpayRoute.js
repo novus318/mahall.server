@@ -32,7 +32,7 @@ router.post('/create-order', async (req, res) => {
   try {
     const { amount, receipt } = req.body;
     const options = {
-      amount, // Amount in paisa
+      amount,
       currency: 'INR',
       receipt,
     };
@@ -49,15 +49,18 @@ router.post('/verify-payment', async (req, res) => {
   const session = await mongoose.startSession();
   try {
     // Validate request body
-    const { order_id, payment_id, signature, recieptNumber } = req.body;
-    if (!order_id || !payment_id || !signature || !recieptNumber) {
+    const { order_id, payment_id, signature, receiptNumber, amount } = req.body;
+    if (!order_id || !payment_id || !signature || !receiptNumber || !amount) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
-    // Find primary account
-    const targetAccount = await BankModel.findOne({ primary: true }).lean();
-    if (!targetAccount) {
-      return res.status(404).json({ success: false, message: 'Primary account not found' });
+    // Find collection by receipt number
+    const existingCollection = await kudiCollection.findOne({ receiptNumber })
+      .populate('memberId houseId')
+      .session(session);
+
+    if (!existingCollection) {
+      return res.status(404).json({ success: false, message: 'Collection not found' });
     }
 
     // Verify Razorpay signature
@@ -69,63 +72,85 @@ router.post('/verify-payment', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid signature' });
     }
 
-    session.startTransaction();
-
-    // Update kudi collection
-    const updatedCollection = await kudiCollection
-      .findOneAndUpdate(
-        { receiptNumber: recieptNumber },
-        {
-          kudiCollectionType: 'Online',
-          accountId: targetAccount._id,
-          status: 'Paid',
-          PaymentDate: new Date(),
-        },
-        { new: true, session }
-      )
-      .populate('memberId houseId')
-      .lean();
-
-    if (!updatedCollection) {
-      await session.abortTransaction();
-      return res.status(404).json({ success: false, message: 'Kudi collection not found' });
+    // Validate payment amount
+    const numericAmount = Number(amount);
+    if (isNaN(numericAmount)) {
+      return res.status(400).json({ success: false, message: 'Invalid amount format' });
     }
 
-    // Credit account
-    const ref = `/house/house-details/${updatedCollection.houseId._id}`;
+    session.startTransaction();
+
+    const isYearlyPayment = existingCollection.paymentType === 'yearly';
+
+    // Validate monthly payment amount
+    if (!isYearlyPayment && numericAmount !== existingCollection.amount) {
+      await session.abortTransaction();
+      return res.status(400).json({ 
+        success: false, 
+        message: `Monthly payment must be exactly ₹${existingCollection.amount}`
+      });
+    }
+
+    // Validate yearly payment limits
+    if (isYearlyPayment) {
+      const newPaidAmount = existingCollection.paidAmount + numericAmount;
+      if (newPaidAmount > existingCollection.totalAmount) {
+        await session.abortTransaction();
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Payment exceeds total amount due' 
+        });
+      }
+
+      existingCollection.paidAmount = newPaidAmount;
+      existingCollection.status = newPaidAmount >= existingCollection.totalAmount 
+        ? 'Paid' 
+        : 'Partial';
+      existingCollection.partialPayment = true;
+    }
+
+    // Common updates for all payment types
+    existingCollection.kudiCollectionType = 'Online';
+    existingCollection.accountId = await BankModel.findOne({ primary: true }).lean();
+    existingCollection.PaymentDate = new Date();
+
+    // Save changes
+    await existingCollection.save({ session });
+
+    // Credit account logic
+    const ref = `/house/house-details/${existingCollection.houseId._id}`;
     const transaction = await creditAccount(
-      targetAccount._id,
-      updatedCollection.amount,
-      updatedCollection.description,
-      updatedCollection.category.name,
+      existingCollection.accountId._id,
+      numericAmount, // Use validated numeric amount
+      existingCollection.description,
+      existingCollection.category.name,
       ref,
       session
     );
 
     if (!transaction) {
-      // Rollback on failure
       await session.abortTransaction();
       return res.status(400).json({ success: false, message: 'Error crediting account' });
     }
 
-    // Send WhatsApp notification
-    await sendWhatsAppMessageFunction(updatedCollection);
+    // Send notification
+    await sendWhatsAppMessageFunction(existingCollection);
 
     await session.commitTransaction();
     res.status(200).json({
-      success: true, message: 'Payment verified and processed successfully',
-      updatedCollection
+      success: true,
+      message: 'Payment verified and processed successfully',
+      updatedCollection: existingCollection
     });
+
   } catch (error) {
-    logger.error('Error in payment verification:', error)
+    logger.error('Payment verification error:', error);
     await session.abortTransaction();
-    res.status(500).json({ success: false, message: 'Payment verification failed', error: error.message });
+    res.status(500).json({ success: false, message: 'Payment processing failed', error: error.message });
   } finally {
     session.endSession();
   }
 });
-
-
 router.get('/house-collection/:recieptNo', async (req, res) => {
   const { recieptNo } = req.params;
   try {

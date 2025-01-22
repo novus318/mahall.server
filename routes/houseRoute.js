@@ -178,7 +178,7 @@ router.get('/get-all', async (req, res) => {
 router.get('/get/pending/collections', async (req, res) => {
     try {
 
-        const pendingCollections = await kudiCollection.find({ status: 'Unpaid' }).sort({
+        const pendingCollections = await kudiCollection.find({ status: { $in: ['Unpaid', 'Partial'] } }).sort({
             createdAt: -1,
         }).populate('memberId houseId')
 
@@ -240,64 +240,81 @@ router.put('/update/collection/:id', async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const { paymentType, targetAccount } = req.body;
+        const { paymentType, targetAccount, amount } = req.body;
         const collectionId = req.params.id;
 
-        // Find the kudiCollection by ID and update it
-        const updatedCollection = await kudiCollection.findByIdAndUpdate(
-            collectionId,
-            {
-                kudiCollectionType: paymentType,
-                accountId: targetAccount,
-                status: 'Paid',
-                PaymentDate: new Date(),
-            },
-            { new: true, session } // Pass the session for transaction
-        ).populate('memberId houseId');
+        // Find the kudiCollection by ID and populate related fields
+        const existingCollection = await kudiCollection.findById(collectionId).populate('memberId houseId').session(session);
 
-        if (!updatedCollection) {
+        if (!existingCollection) {
             await session.abortTransaction(); // Rollback if collection not found
             session.endSession();
             return res.status(404).send({ success: false, message: 'Kudi collection not found' });
         }
 
-        const ref = `/house/house-details/${updatedCollection.houseId._id}`;
+        // Check if it's a yearly payment
+        const isYearlyPayment = existingCollection.paymentType === 'yearly';
+
+        // Update the collection based on payment type
+        if (isYearlyPayment) {
+            // Validate that paidAmount does not exceed totalAmount
+            if (existingCollection.paidAmount + amount > existingCollection.totalAmount) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(400).send({ success: false, message: 'Payment amount exceeds the total amount due' });
+            }
+
+            existingCollection.kudiCollectionType = paymentType;
+            existingCollection.accountId = targetAccount;
+            existingCollection.paidAmount += amount; // Add the partial payment amount
+
+            // Check if the total amount is fully paid
+            if (existingCollection.paidAmount >= existingCollection.totalAmount) {
+                existingCollection.status = 'Paid';
+                existingCollection.PaymentDate = new Date();
+            } else {
+                existingCollection.status = 'Partial';
+                existingCollection.partialPayment = true;
+            }
+        } else {
+            // For monthly payments
+            existingCollection.kudiCollectionType = paymentType;
+            existingCollection.accountId = targetAccount;
+            existingCollection.PaymentDate = new Date();
+            existingCollection.status = 'Paid';
+        }
+
+        // Save the updated collection
+        await existingCollection.save({ session });
+
+        const ref = `/house/house-details/${existingCollection.houseId._id}`;
 
         // Attempt to credit the account
-        const transaction = await creditAccount(updatedCollection.accountId, updatedCollection.amount,
-            updatedCollection.description,
-            updatedCollection.category.name,
+        const transaction = await creditAccount(
+            existingCollection.accountId,
+            isYearlyPayment ? amount : existingCollection.amount, // Use amount for yearly payments, existingCollection.amount for monthly
+            existingCollection.description,
+            existingCollection.category.name,
             ref,
             session
         );
 
         if (!transaction) {
-            // Rollback if transaction failed
-            await kudiCollection.findByIdAndUpdate(
-                collectionId,
-                {
-                    kudiCollectionType: paymentType,
-                    status: 'Unpaid',
-                    accountId: targetAccount,
-                    PaymentDate: new Date(),
-                },
-                { new: true, session } // Ensure this update also runs in the transaction
-            );
             await session.abortTransaction();
             session.endSession();
             return res.status(400).send({ success: false, message: 'Error crediting account' });
         }
 
-        // Send WhatsApp message only if transaction is successful
-        await sendWhatsAppMessageFunction(updatedCollection);
+        // Send WhatsApp message only if the transaction is successful
+        await sendWhatsAppMessageFunction(existingCollection);
 
         // Commit the transaction if everything goes well
         await session.commitTransaction();
         session.endSession();
 
-        res.status(200).send({ success: true, message: 'Kudi collection updated successfully', data: updatedCollection });
+        res.status(200).send({ success: true, message: 'Kudi collection updated successfully', data: existingCollection });
     } catch (error) {
-        logger.error(error)
+        logger.error(error);
 
         // Rollback the transaction on error
         await session.abortTransaction();
@@ -306,7 +323,6 @@ router.put('/update/collection/:id', async (req, res) => {
         res.status(500).send({ success: false, message: 'Server Error' });
     }
 });
-
 
 router.get('/kudi-collections/:memberId', async (req, res) => {
     try {

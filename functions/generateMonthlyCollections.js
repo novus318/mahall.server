@@ -27,17 +27,16 @@ async function getLastCollectionReceiptNumber() {
 
 export const generateMonthlyCollections = async () => {
     try {
-        const lastMonth = new Date();
-        lastMonth.setMonth(lastMonth.getMonth() - 1);
-        const lastMonthKey = `${lastMonth.getFullYear()}-${lastMonth.getMonth() + 1}`;
+        const currentDate = new Date();
+        const currentMonthKey = `${currentDate.getFullYear()}-${currentDate.getMonth() + 1}`; // Format: YYYY-MM
 
         // Fetch only houses with paymentType 'monthly'
         const houses = await houseModel.find({ paymentType: 'monthly' }).populate('familyHead');
 
         for (const house of houses) {
-            // Skip if the month is already in paidMonths
-            if (house.paidMonths.includes(lastMonthKey)) {
-                logger.info(`Skipped ${house.name} - Collection for ${lastMonthKey} already paid`);
+            // Skip if the current month is already in paidMonths
+            if (house.paidMonths.includes(currentMonthKey)) {
+                logger.info(`Skipped ${house.name} - Collection for ${currentMonthKey} already paid`);
                 continue;
             }
 
@@ -48,13 +47,13 @@ export const generateMonthlyCollections = async () => {
             // Create the collection entry
             const collection = new kudiCollection({
                 amount: house.collectionAmount,
-                date: new Date(),
-                description: `Monthly Kudi collection of ${house.collectionAmount} for ${house.familyHead?.name || 'unknown'} from ${house.name} house for the month of ${lastMonth.getFullYear()} - ${lastMonth.toLocaleString('default', { month: 'long' })}.`,
+                date: currentDate,
+                description: `Monthly Kudi collection of ${house.collectionAmount} for ${house.familyHead?.name || 'unknown'} from ${house.name} house for the month of ${currentDate.getFullYear()} - ${currentDate.toLocaleString('default', { month: 'long' })}.`,
                 category: {
                     name: 'Kudi collection',
                     description: `Monthly collection for ${house.familyHead?.name || 'the house'}`,
                 },
-                collectionMonth: `${lastMonth.getFullYear()} - ${lastMonth.toLocaleString('default', { month: 'long' })}`,
+                collectionMonth: `${currentDate.getFullYear()} - ${currentDate.toLocaleString('default', { month: 'long' })}`,
                 memberId: house.familyHead?._id,
                 houseId: house._id,
                 status: 'Unpaid',
@@ -71,14 +70,14 @@ export const generateMonthlyCollections = async () => {
             // Save the collection
             await collection.save();
 
-            // Mark the month as paid
-            house.paidMonths.push(lastMonthKey);
+            // Mark the current month as paid
+            house.paidMonths.push(currentMonthKey);
             await house.save();
 
             // Send a WhatsApp notification
-            await sendWhatsAppMessage(house, lastMonth.toLocaleString('default', { month: 'long' }));
+            await sendWhatsAppMessage(house, currentDate.toLocaleString('default', { month: 'long' }));
 
-            // Wait before processing the next house
+            // Wait before processing the next house (to avoid rate limits)
             await new Promise(resolve => setTimeout(resolve, 5000));
         }
 
@@ -87,7 +86,6 @@ export const generateMonthlyCollections = async () => {
         logger.error('Error creating monthly collections:', error);
     }
 };
-
 
 const sendWhatsAppMessage = async (house,month) => {
     try {

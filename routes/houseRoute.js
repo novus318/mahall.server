@@ -9,6 +9,7 @@ import { creditAccount } from "../functions/transaction.js";
 import recieptNumberModel from "../model/recieptNumberModel.js";
 import { NextReceiptNumber } from "../functions/recieptNumber.js";
 import logger from "../utils/logger.js";
+import { sendWhatsAppPartial, sendWhatsAppYearlyReceipt } from "../functions/generateYearlyCollection.js";
 const router = express.Router()
 
 
@@ -244,12 +245,15 @@ router.put('/update/collection/:id', async (req, res) => {
         const collectionId = req.params.id;
 
         // Find the kudiCollection by ID and populate related fields
-        const existingCollection = await kudiCollection.findById(collectionId).populate('memberId houseId').session(session);
+        const existingCollection = await kudiCollection
+            .findById(collectionId)
+            .populate('memberId houseId')
+            .session(session);
 
         if (!existingCollection) {
-            await session.abortTransaction(); // Rollback if collection not found
+            await session.abortTransaction();
             session.endSession();
-            return res.status(404).send({ success: false, message: 'Kudi collection not found' });
+            return res.status(404).json({ success: false, message: 'Kudi collection not found' });
         }
 
         // Check if it's a yearly payment
@@ -261,7 +265,7 @@ router.put('/update/collection/:id', async (req, res) => {
             if (existingCollection.paidAmount + amount > existingCollection.totalAmount) {
                 await session.abortTransaction();
                 session.endSession();
-                return res.status(400).send({ success: false, message: 'Payment amount exceeds the total amount due' });
+                return res.status(400).json({ success: false, message: 'Payment amount exceeds the total amount due' });
             }
 
             existingCollection.kudiCollectionType = paymentType;
@@ -272,9 +276,21 @@ router.put('/update/collection/:id', async (req, res) => {
             if (existingCollection.paidAmount >= existingCollection.totalAmount) {
                 existingCollection.status = 'Paid';
                 existingCollection.PaymentDate = new Date();
+                existingCollection.partialPayments.push({
+                    amount: amount,
+                    paymentDate: new Date(),
+                    description: existingCollection.description || 'Partial payment',
+                    receiptNumber: existingCollection.receiptNumber || null,
+                });
             } else {
                 existingCollection.status = 'Partial';
                 existingCollection.partialPayment = true;
+                existingCollection.partialPayments.push({
+                    amount: amount,
+                    paymentDate: new Date(),
+                    description: existingCollection.description || 'Partial payment',
+                    receiptNumber: existingCollection.receiptNumber || null,
+                });
             }
         } else {
             // For monthly payments
@@ -302,25 +318,38 @@ router.put('/update/collection/:id', async (req, res) => {
         if (!transaction) {
             await session.abortTransaction();
             session.endSession();
-            return res.status(400).send({ success: false, message: 'Error crediting account' });
+            return res.status(400).json({ success: false, message: 'Error crediting account' });
         }
-
-        // Send WhatsApp message only if the transaction is successful
-        await sendWhatsAppMessageFunction(existingCollection);
-
-        // Commit the transaction if everything goes well
         await session.commitTransaction();
         session.endSession();
 
-        res.status(200).send({ success: true, message: 'Kudi collection updated successfully', data: existingCollection });
-    } catch (error) {
-        logger.error(error);
+        // Send WhatsApp notifications only after the transaction is committed
+        try {
+            if (isYearlyPayment) {
+                if (existingCollection.paidAmount >= existingCollection.totalAmount) {
+                    await sendWhatsAppYearlyReceipt(existingCollection);
+                } else {
+                    await sendWhatsAppPartial(existingCollection, amount);
+                }
+            } else {
+                await sendWhatsAppMessageFunction(existingCollection);
+            }
+        } catch (notificationError) {
+            // Log the notification error but do not roll back the transaction
+            logger.error('Error sending WhatsApp notification:', notificationError);
+        }
 
-        // Rollback the transaction on error
-        await session.abortTransaction();
+        res.status(200).json({ success: true, message: 'Kudi collection updated successfully', data: existingCollection });
+    } catch (error) {
+        logger.error('Error updating kudi collection:', error);
+
+        // Rollback the transaction only if it hasn't been committed
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
         session.endSession();
 
-        res.status(500).send({ success: false, message: 'Server Error' });
+        res.status(500).json({ success: false, message: 'Server Error' });
     }
 });
 

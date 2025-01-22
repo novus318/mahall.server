@@ -6,6 +6,11 @@ import { NextReceiptNumber } from "./recieptNumber.js";
 import recieptNumberModel from "../model/recieptNumberModel.js";
 import logger from "../utils/logger.js";
 
+
+dotenv.config({ path: './.env' })
+const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL;
+const ACCESS_TOKEN = process.env.WHATSAPP_TOKEN;
+
 async function getLastCollectionReceiptNumber() {
     try {
         const receiptNumber = await recieptNumberModel.findOne({}, 'collectionReceiptNumber.lastNumber');
@@ -87,7 +92,7 @@ export const generateYearlyCollections = async () => {
     }
 };
 
-const sendWhatsAppMessage = async (house,month) => {
+const sendWhatsAppMessage = async (house, month) => {
     try {
         const response = await axios.post(
             WHATSAPP_API_URL,
@@ -98,14 +103,14 @@ const sendWhatsAppMessage = async (house,month) => {
                 template: {
                     name: 'yearly_collection',
                     language: {
-                        code: 'ml' 
+                        code: 'ml'
                     },
                     components: [
                         {
                             type: 'body',
                             parameters: [
-                                { type: 'text', text: house.familyHead.name }, 
-                                { type: 'text', text: month },   
+                                { type: 'text', text: house.familyHead.name },
+                                { type: 'text', text: month },
                                 { type: 'text', text: house.number },
                                 { type: 'text', text: house.collectionAmount },
                             ]
@@ -115,7 +120,7 @@ const sendWhatsAppMessage = async (house,month) => {
                             sub_type: 'url',
                             index: '0',
                             parameters: [
-                                { type: 'text', text: `${house.familyHead._id}` }  
+                                { type: 'text', text: `${house.familyHead._id}` }
                             ]
                         }
                     ]
@@ -131,5 +136,117 @@ const sendWhatsAppMessage = async (house,month) => {
         logger.info('WhatsApp message sent successfully:', response.data);
     } catch (error) {
         logger.error('Error in sending WhatsApp message:', error.response);
+    }
+};
+
+export const sendWhatsAppYearlyReceipt = async (collection) => {
+    try {
+        const response = await axios.post(
+            WHATSAPP_API_URL,
+            {
+                messaging_product: 'whatsapp',
+                to: `${collection.memberId.whatsappNumber}`,
+                type: 'template',
+                template: {
+                    name: 'yearly_collection_receipt',
+                    language: {
+                        code: 'ml'
+                    },
+                    components: [
+                        {
+                            type: 'body',
+                            parameters: [
+                                {
+                                    type: 'text',
+                                    text: `${collection.memberId.name}`
+                                },
+                                {
+                                    type: 'text',
+                                    text: `${collection.paidYear}`
+                                },
+                                {
+                                    type: 'text',
+                                    text: `${collection.houseId.number}`
+                                },
+                                { type: 'text', text: collection.totalAmount.toString() }
+                            ]
+                        },
+                        {
+                            type: 'button',
+                            sub_type: 'url',
+                            index: '0',
+                            parameters: [
+                                { type: 'text', text: `${collection.memberId._id}` }
+                            ]
+                        }
+                    ]
+                }
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        logger.info('WhatsApp message sent successfully:', response.data.messages);
+
+    } catch (error) {
+        logger.error(error.response.data)
+    }
+};
+
+export const sendWhatsAppPartial = async (collection, amount) => {
+    try {
+        const response = await axios.post(
+            WHATSAPP_API_URL,
+            {
+                messaging_product: 'whatsapp',
+                to: `${collection.memberId.whatsappNumber}`,
+                type: 'template',
+                template: {
+                    name: 'collection_partial',
+                    language: {
+                        code: 'ml'
+                    },
+                    components: [
+                        {
+                            type: 'body',
+                            parameters: [
+                                { type: 'text', text: collection.memberId.name },
+                                { type: 'text', text: collection.paidYear },
+                                { type: 'text', text: collection.totalAmount.toString() },
+                                { type: 'text', text: amount.toString() },
+                                { type: 'text', text: (collection.totalAmount - collection.paidAmount).toString() },
+                                { type: 'text', text: collection.kudiCollectionType },
+                            ]
+                        },
+                        {
+                            type: 'button',
+                            sub_type: 'url',
+                            index: '0',
+                            parameters: [
+                                { type: 'text', text: `${collection.memberId._id}` }
+                            ]
+                        }
+                    ]
+                }
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        logger.info('WhatsApp message sent successfully:', response.data.messages);
+
+    } catch (error) {
+        console.log(error)
+        logger.error('Error in sendWhatsAppPartial:', {
+            error: error.response,
+            collectionId: collection?._id,
+            amount,
+        });
     }
 };

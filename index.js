@@ -23,7 +23,8 @@ import reportRoutes from './routes/reportRoutes.js'
 import adminRoute from './routes/adminRoute.js'
 import razorpayRoute from './routes/razorpayRoute.js'
 import logger from "./utils/logger.js"
-// import { generateYearlyCollections } from "./functions/generateYearlyCollection.js"
+// import { generateMonthlySample } from "./functions/send-sample.js"
+// import { generateYearlyCollectionForSingleHouse, generateYearlyCollections } from "./functions/generateYearlyCollection.js"
 
 
 
@@ -44,6 +45,8 @@ app.use(morgan('dev'))
 //database configcon
 connectDB();
 
+// generateMonthlySample()
+// await generateYearlyCollectionForSingleHouse('2025', 'ME023');
 // generateYearlyCollections()
  // generateMonthlyCollections()
 //  generateMonthlySalaries()

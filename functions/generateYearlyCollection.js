@@ -92,6 +92,81 @@ export const generateYearlyCollections = async () => {
     }
 };
 
+
+
+export const generateYearlyCollectionForSingleHouse = async (yearKey, houseNumber) => {
+    try {
+        // Fetch the house by house.number
+        const house = await houseModel.findOne({ number: houseNumber }).populate('familyHead');
+
+        if (!house) {
+            logger.error(`House with number ${houseNumber} not found`);
+            return;
+        }
+
+        // Check if the house's paymentType is 'yearly'
+        if (house.paymentType !== 'yearly') {
+            logger.error(`House with number ${houseNumber} is not set for yearly payments`);
+            return;
+        }
+
+        // Skip if the year is already in paidYears
+        if (house.paidYears.includes(yearKey)) {
+            logger.info(`Skipped ${house.name} - Collection for ${yearKey} already paid`);
+            return;
+        }
+
+        // Generate a new receipt number
+        const lastReceiptNumber = await getLastCollectionReceiptNumber();
+        const newReceiptNumber = await NextReceiptNumber(lastReceiptNumber);
+
+        // Calculate the remaining amount for the year
+        const remainingAmount = house.collectionAmount * 12;
+
+        // Create the collection entry
+        const collection = new kudiCollection({
+            amount: remainingAmount,
+            date: new Date(),
+            description: `Yearly Kudi collection of ${remainingAmount} for ${house.familyHead?.name || 'unknown'} from ${house.name} house for the year ${yearKey}.`,
+            category: {
+                name: 'Kudi collection',
+                description: `Yearly collection for ${house.familyHead?.name || 'the house'}`,
+            },
+            paidYear: yearKey,
+            memberId: house.familyHead?._id,
+            houseId: house._id,
+            status: 'Unpaid',
+            receiptNumber: newReceiptNumber,
+            paymentType: 'yearly',
+            totalAmount: remainingAmount,
+            paidAmount: 0,
+        });
+
+        // Update the receipt number tracker
+        const updateReceiptNumber = await recieptNumberModel.findOne();
+        if (updateReceiptNumber) {
+            updateReceiptNumber.collectionReceiptNumber.lastNumber = newReceiptNumber;
+            await updateReceiptNumber.save();
+        }
+
+        // Save the collection
+        await collection.save();
+
+        // Update the house's paidYears array
+        house.paidYears.push(yearKey);
+        await house.save();
+
+        // Send WhatsApp message
+        await sendWhatsAppMessage(house, yearKey);
+
+        logger.info(`Yearly collection for ${yearKey} created for house with number ${houseNumber}`);
+    } catch (error) {
+        logger.error(`Error creating yearly collection for house with number ${houseNumber}:`, error);
+    }
+};
+
+
+
 const sendWhatsAppMessage = async (house, month) => {
     try {
         const response = await axios.post(
@@ -112,7 +187,7 @@ const sendWhatsAppMessage = async (house, month) => {
                                 { type: 'text', text: house.familyHead.name },
                                 { type: 'text', text: month },
                                 { type: 'text', text: house.number },
-                                { type: 'text', text: house.collectionAmount },
+                                { type: 'text', text: house.collectionAmount * 12 },
                             ]
                         },
                         {

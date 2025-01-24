@@ -6,42 +6,64 @@ dotenv.config({ path: './.env' })
 
 const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL;
 const ACCESS_TOKEN = process.env.WHATSAPP_TOKEN;
+import xlsx from 'xlsx';
+
+
 export const generateMonthlySample = async () => {
     try {
         // Fetch all houses and populate the family head details
         const houses = await houseModel.find().populate('familyHead');
 
+        // Create a new workbook and a worksheet
+        const workbook = xlsx.utils.book_new();
+        const worksheetData = [];
+
+        // Add headers to the worksheet
+        worksheetData.push(['Name', 'WhatsApp Number']);
 
         for (const house of houses) {
             try {
-                // Attempt to send WhatsApp message for the house
-                await sendWhatsTest(house);
+                // Extract family head details
+                const familyHead = house.familyHead;
+                if (familyHead && familyHead.name && familyHead.whatsappNumber) {
+                    // Add family head details to the worksheet data
+                    worksheetData.push([familyHead.name, familyHead.whatsappNumber]);
+                }
             } catch (sendError) {
                 // Log the error and skip to the next house
-                console.error(`Error sending message for house ID ${house._id}:`, sendError.message);
+                console.log(`Error processing house ${house._id}:`, sendError);
             }
 
-            // Wait for 5 seconds before processing the next house
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Wait for 2 seconds before processing the next house
+            await new Promise(resolve => setTimeout(resolve, 100));
         }
 
-        logger.info('Monthly collections created for all houses');
+        // Create a worksheet from the data
+        const worksheet = xlsx.utils.aoa_to_sheet(worksheetData);
+
+        // Add the worksheet to the workbook
+        xlsx.utils.book_append_sheet(workbook, worksheet, 'Family Heads');
+
+        // Write the workbook to a file
+        xlsx.writeFile(workbook, 'familyheads.xls');
+
+        console.log('Monthly collections created for all houses');
     } catch (error) {
-        logger.error('Error fetching houses or creating monthly collections:', error);
+        console.log('Error fetching houses or creating monthly collections:', error);
     }
 };
 
-const sendWhatsTest = async (house) => {
+const sendWhatsTest = async (number) => {
     try {
         // Construct and send the WhatsApp message
         const response = await axios.post(
             WHATSAPP_API_URL, // Use environment variable for the API URL
             {
                 messaging_product: 'whatsapp',
-                to: `${house.familyHead.whatsappNumber}`,
+                to: `${number}`,
                 type: 'template',
                 template: {
-                    name: 'send_whatsapp_test',
+                    name: 'launch_alert',
                     language: { code: 'ml' }
                 }
             },

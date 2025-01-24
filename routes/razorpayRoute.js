@@ -12,6 +12,7 @@ import logger from "../utils/logger.js";
 import { sendRentConfirmWhatsapp } from "../functions/generateRent.js";
 import houseModel from "../model/houseModel.js";
 import axios from "axios";
+import { sendWhatsAppPartial, sendWhatsAppYearlyReceipt } from "../functions/generateYearlyCollection.js";
 
 dotenv.config({ path: './.env' })
 
@@ -47,10 +48,13 @@ router.post('/create-order', async (req, res) => {
 
 router.post('/verify-payment', async (req, res) => {
   const session = await mongoose.startSession();
+  session.startTransaction();
   try {
     // Validate request body
     const { order_id, payment_id, signature, receiptNumber, amount } = req.body;
     if (!order_id || !payment_id || !signature || !receiptNumber || !amount) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
@@ -60,6 +64,8 @@ router.post('/verify-payment', async (req, res) => {
       .session(session);
 
     if (!existingCollection) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ success: false, message: 'Collection not found' });
     }
 
@@ -69,22 +75,25 @@ router.post('/verify-payment', async (req, res) => {
       .update(`${order_id}|${payment_id}`)
       .digest('hex');
     if (generatedSignature !== signature) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ success: false, message: 'Invalid signature' });
     }
 
     // Validate payment amount
     const numericAmount = Number(amount);
     if (isNaN(numericAmount)) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ success: false, message: 'Invalid amount format' });
     }
-
-    session.startTransaction();
 
     const isYearlyPayment = existingCollection.paymentType === 'yearly';
 
     // Validate monthly payment amount
     if (!isYearlyPayment && numericAmount !== existingCollection.amount) {
       await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ 
         success: false, 
         message: `Monthly payment must be exactly ₹${existingCollection.amount}`
@@ -96,6 +105,7 @@ router.post('/verify-payment', async (req, res) => {
       const newPaidAmount = existingCollection.paidAmount + numericAmount;
       if (newPaidAmount > existingCollection.totalAmount) {
         await session.abortTransaction();
+        session.endSession();
         return res.status(400).json({ 
           success: false, 
           message: 'Payment exceeds total amount due' 
@@ -107,6 +117,14 @@ router.post('/verify-payment', async (req, res) => {
         ? 'Paid' 
         : 'Partial';
       existingCollection.partialPayment = true;
+
+      // Add partial payment details for yearly payments
+      existingCollection.partialPayments.push({
+        amount: numericAmount,
+        paymentDate: new Date(),
+        description: existingCollection.description || 'Partial payment',
+        receiptNumber: existingCollection.receiptNumber || null,
+      });
     }
 
     // Common updates for all payment types
@@ -130,13 +148,30 @@ router.post('/verify-payment', async (req, res) => {
 
     if (!transaction) {
       await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ success: false, message: 'Error crediting account' });
     }
 
-    // Send notification
-    await sendWhatsAppMessageFunction(existingCollection);
-
+    // Commit the transaction
     await session.commitTransaction();
+    session.endSession();
+
+    // Send WhatsApp notifications only after the transaction is committed
+    try {
+      if (isYearlyPayment) {
+        if (existingCollection.paidAmount >= existingCollection.totalAmount) {
+          await sendWhatsAppYearlyReceipt(existingCollection);
+        } else {
+          await sendWhatsAppPartial(existingCollection, numericAmount);
+        }
+      } else {
+        await sendWhatsAppMessageFunction(existingCollection);
+      }
+    } catch (notificationError) {
+      // Log the notification error but do not roll back the transaction
+      logger.error('Error sending WhatsApp notification:', notificationError);
+    }
+
     res.status(200).json({
       success: true,
       message: 'Payment verified and processed successfully',
@@ -145,12 +180,18 @@ router.post('/verify-payment', async (req, res) => {
 
   } catch (error) {
     logger.error('Payment verification error:', error);
-    await session.abortTransaction();
-    res.status(500).json({ success: false, message: 'Payment processing failed', error: error.message });
-  } finally {
+
+    // Rollback the transaction only if it hasn't been committed
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     session.endSession();
+
+    res.status(500).json({ success: false, message: 'Payment processing failed', error: error.message });
   }
 });
+
+
 router.get('/house-collection/:recieptNo', async (req, res) => {
   const { recieptNo } = req.params;
   try {

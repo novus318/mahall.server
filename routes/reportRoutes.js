@@ -112,6 +112,7 @@ router.get('/get/members', async (req, res) => {
       
               return {
                 house: house.name,
+                houseId: house._id,
                 familyHead:house.familyHead.name,
                 totalMembers: members.length,
                houseNumber: house.number,

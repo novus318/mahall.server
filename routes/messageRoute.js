@@ -180,25 +180,60 @@ router.get('/webhook', async (req, res) => {
 router.get('/messages', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const pageSize = 5; 
+    const pageSize = 5;
+
+    // Fetch messages with pagination and sorting
     const messages = await messageModel.find()
-    .sort({ createdAt: -1 })
-    .skip((page - 1) * pageSize)
-    .limit(pageSize);
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * pageSize)
+      .limit(pageSize);
+
+    // Get total count of messages
     const totalCount = await messageModel.countDocuments();
+
+    // Enrich messages with member and house details
+    const enrichedMessages = await Promise.all(
+      messages.map(async (message) => {
+        // Find the member whose whatsappNumber matches the senderNumber
+        const member = await memberModel.findOne({ whatsappNumber: message.senderNumber });
+
+        if (member) {
+
+          return {
+            ...message.toObject(), // Convert Mongoose document to plain object
+            reference: true, // Add reference flag
+            referenceData: {
+              name: member.name,
+              house: member.house, // Include house number if house exists
+            },
+          };
+        } else {
+          // If no member is found, return the message without reference
+          return {
+            ...message.toObject(),
+            reference: false,
+            member: null,
+          };
+        }
+      })
+    );
+
     res.json({
       success: true,
-      totalCount: totalCount
-      ,messages});
+      totalCount,
+      messages: enrichedMessages,
+    });
   } catch (error) {
-    logger.error(error)
+    logger.error(error);
     res.status(500).send({
-      success: false
-     , message: 'Server Error'
-     , error: error.message
+      success: false,
+      message: 'Server Error',
+      error: error.message,
     });
   }
-})
+});
+
+
 router.get('/media/:id', async (req, res) => {
     const media = await messageModel.findById(req.params.id)
     if (!media) {

@@ -157,7 +157,7 @@ router.get('/get', async (req, res) => {
         const houses = await houseModel.find({}).sort({
             createdAt: -1,
         }).populate('familyHead');
-        res.status(200).send({ success: true, houses });
+        res.status(200).send({ success: true, houses,total: houses.length });
     } catch (error) {
         logger.error(error)
         res.status(500).send({ success: false, message: 'Server Error' });
@@ -169,7 +169,7 @@ router.get('/get-all', async (req, res) => {
         const houses = await houseModel.find({}).sort({
             createdAt: -1,
         }).populate('familyHead');
-        res.status(200).send({ success: true, houses });
+        res.status(200).send({ success: true, houses, total: houses.length});
     } catch (error) {
         logger.error(error)
         res.status(500).send({ success: false, message: 'Server Error' });

@@ -129,35 +129,42 @@ router.get('/get/members', async (req, res) => {
 
   router.get('/get/collections/byDate', async (req, res) => {
     const { startDate, endDate } = req.query;
-        try {
-            if (!startDate || !endDate) {
-                return res.status(400).json({ success: false, message: 'Please provide both startDate and endDate' });
-            }
-    
-            // Convert the dates to JavaScript Date objects
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-            
-            // Set the end date to include the entire day
-            end.setHours(23, 59, 59, 999);
-            const collections = await kudiCollection.find({
-                createdAt: { $gte: start, $lte: end }
-            }).sort({
-                createdAt: -1,
-            }).populate('memberId houseId')
+    try {
+        if (!startDate || !endDate) {
+            return res.status(400).json({ success: false, message: 'Please provide both startDate and endDate' });
+        }
 
-            if (!collections || collections.length === 0) {
-                return res.status(404).json({ success: false, message: 'No collections found' });
-            } 
-            res.status(200).send({ success: true, collections });
-        } catch (error) {
-            logger.error(error)
-            res.status(500).send({
-                success: false, message: `Server Error: ${error}`,
-                error
-            });
-        }       
-})
+        // Convert the dates to JavaScript Date objects
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        
+        // Set the end date to include the entire day
+        end.setHours(23, 59, 59, 999);
+
+        // Find collections where either PaymentDate or createdAt falls within the date range
+        const collections = await kudiCollection.find({
+            $or: [
+                { PaymentDate: { $gte: start, $lte: end } },
+                { createdAt: { $gte: start, $lte: end }, PaymentDate: { $exists: false } }
+            ]
+        }).sort({
+            PaymentDate: -1,
+            createdAt: -1 // Sort by createdAt if PaymentDate is not available
+        }).populate('memberId houseId');
+
+        if (!collections || collections.length === 0) {
+            return res.status(404).json({ success: false, message: 'No collections found' });
+        } 
+
+        res.status(200).send({ success: true, collections });
+    } catch (error) {
+        logger.error(error);
+        res.status(500).send({
+            success: false, message: `Server Error: ${error}`,
+            error
+        });
+    }       
+});
 
 router.get('/rent-collections/byDate', async (req, res) => {
 

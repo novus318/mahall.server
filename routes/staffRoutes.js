@@ -253,7 +253,7 @@ router.put('/update/salary/:id', async (req, res) => {
         // Debit the account for net pay
         const transaction = await debitAccount(accountId, pay, description, category, ref);
         if (transaction) {
-            debitTransactionId = transaction._id;
+        debitTransactionId = transaction._id;
         } else {
             await salaryModel.findByIdAndUpdate(payslipId, { status: 'Pending' }, { new: true, session });
             await session.abortTransaction();

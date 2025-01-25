@@ -46,9 +46,9 @@ app.use(morgan('dev'))
 connectDB();
 
 // generateMonthlySample()
-// await generateYearlyCollectionForSingleHouse('2025', 'ME023');
+// await generateYearlyCollectionForSingleHouse('2025', '100');
 // generateYearlyCollections()
- // generateMonthlyCollections()
+//  generateMonthlyCollections()
 //  generateMonthlySalaries()
 // collectRent()
 

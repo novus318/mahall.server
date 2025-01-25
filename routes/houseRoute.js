@@ -196,7 +196,7 @@ router.get('/get/paid/collections', async (req, res) => {
     try {
 
         const paidCollections = await kudiCollection.find({ status: 'Paid' }).sort({
-            createdAt: -1,
+            PaymentDate: -1,
         }).populate('memberId houseId').limit(50)
 
         res.status(200).send({ success: true, houses: paidCollections });
@@ -308,7 +308,7 @@ router.put('/update/collection/:id', async (req, res) => {
         // Attempt to credit the account
         const transaction = await creditAccount(
             existingCollection.accountId,
-            isYearlyPayment ? amount : existingCollection.amount, // Use amount for yearly payments, existingCollection.amount for monthly
+            isYearlyPayment ? amount : existingCollection.amount,
             existingCollection.description,
             existingCollection.category.name,
             ref,

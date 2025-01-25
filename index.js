@@ -11,7 +11,7 @@ import bankRoutes from './routes/bankRoutes.js'
 import staffRoutes from './routes/staffRoutes.js'
 import buildingRoutes from './routes/buildingRoutes.js'
 import transactionRoutes from './routes/transactionRoutes.js'
-// import { generateMonthlyCollections } from "./functions/generateMonthlyCollections.js"
+import { generateMonthlyCollections } from "./functions/generateMonthlyCollections.js"
 // import { generateMonthlySalaries } from "./functions/generateSalary.js"
 // import { collectRent } from "./functions/generateRent.js"
 import dashboardRoutes from './routes/dashboardRoutes.js'

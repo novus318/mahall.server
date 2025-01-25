@@ -28,7 +28,7 @@ async function getLastCollectionReceiptNumber() {
 export const generateMonthlyCollections = async () => {
     try {
         const currentDate = new Date();
-        const currentMonthKey = `${currentDate.getFullYear()}-${currentDate.getMonth() + 1}`; // Format: YYYY-MM
+        const currentMonthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
 
         // Fetch only houses with paymentType 'monthly'
         const houses = await houseModel.find({ paymentType: 'monthly' }).populate('familyHead');

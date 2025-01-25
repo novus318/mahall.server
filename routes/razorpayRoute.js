@@ -129,6 +129,7 @@ router.post('/verify-payment', async (req, res) => {
 
     // Common updates for all payment types
     existingCollection.kudiCollectionType = 'Online';
+    existingCollection.status= 'Paid';
     existingCollection.accountId = await BankModel.findOne({ primary: true }).lean();
     existingCollection.PaymentDate = new Date();
 

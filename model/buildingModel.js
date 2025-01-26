@@ -24,7 +24,24 @@ const rentCollectionSchema = new mongoose.Schema({
       enum: ['Cash', 'Online'], 
       default: 'Cash'
   },
-    status: { type: String, enum: ['Pending', 'Paid','Rejected'], default: 'Pending' },
+  paidAmount: {
+    type: Number,
+    default: 0
+},
+  partialPayments: [{
+    amount: {
+        type: Number,
+        required: true
+    },
+    paymentDate: {
+        type: Date,
+        default: Date.now
+    },
+    description: {
+        type: String,
+    }
+}],
+    status: { type: String, enum: ['Pending', 'Paid','Rejected','Partial'], default: 'Pending' },
   }, { timestamps: true });
 
   const depositTransactionSchema = new mongoose.Schema({

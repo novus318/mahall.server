@@ -93,7 +93,10 @@ const kudiCollectionSchema = new mongoose.Schema({
         receiptNumber: {
             type: String,
         }
-    }]
+    }],
+    paymentId: {
+        type: String,
+    }
 }, { timestamps: true });
 
 // Export the model

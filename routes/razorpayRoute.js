@@ -13,6 +13,7 @@ import { sendRentConfirmWhatsapp } from "../functions/generateRent.js";
 import houseModel from "../model/houseModel.js";
 import axios from "axios";
 import { sendWhatsAppPartial, sendWhatsAppYearlyReceipt } from "../functions/generateYearlyCollection.js";
+import Payment from "../model/PaymentOrderId.js";
 
 dotenv.config({ path: './.env' })
 
@@ -28,27 +29,55 @@ const razorpay = new Razorpay({
 
 const router = express.Router()
 
-
 router.post('/create-order', async (req, res) => {
   try {
     const { amount, receipt } = req.body;
+
+    // Find the existing collection based on the receipt number
+    const existingCollection = await kudiCollection.findOne({ receiptNumber: receipt })
+      .populate('memberId houseId'); // Populate the memberId and houseId
+
+    if (!existingCollection) {
+      return res.status(404).json({ message: 'Collection not found.' });
+    }
+
+    // Prepare Razorpay order options
     const options = {
       amount,
       currency: 'INR',
-      receipt,
+      receipt: receipt,
+      notes: {
+        Receipt: receipt,
+        House: existingCollection.houseId.number, // Using house number from populated data
+      },
     };
+
+    // Create the order with Razorpay
     const order = await razorpay.orders.create(options);
+
+    // Save the payment order details to the database
+    const newPayment = new Payment({
+      order_id: order.id,
+      receipt: receipt,
+      status: 'created',
+   });
+
+    await newPayment.save(); // Save payment order to the database
+
+    // Return the Razorpay order response
     res.status(200).json(order);
   } catch (error) {
-    logger.error(error)
-    res.status(500).json({ message: 'Unable to create Razorpay order.', error });
+    logger.error(error); // Log the error
+    res.status(500).json({ message: 'Unable to create Razorpay order.', error: error.message });
   }
-})
+});
+
 
 
 router.post('/verify-payment', async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
+
   try {
     // Validate request body
     const { order_id, payment_id, signature, receiptNumber, amount } = req.body;
@@ -74,6 +103,7 @@ router.post('/verify-payment', async (req, res) => {
       .createHmac('sha256', RAZORPAY_KEY_SECRET)
       .update(`${order_id}|${payment_id}`)
       .digest('hex');
+
     if (generatedSignature !== signature) {
       await session.abortTransaction();
       session.endSession();
@@ -94,8 +124,8 @@ router.post('/verify-payment', async (req, res) => {
     if (!isYearlyPayment && numericAmount !== existingCollection.amount) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         message: `Monthly payment must be exactly ₹${existingCollection.amount}`
       });
     }
@@ -106,16 +136,14 @@ router.post('/verify-payment', async (req, res) => {
       if (newPaidAmount > existingCollection.totalAmount) {
         await session.abortTransaction();
         session.endSession();
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Payment exceeds total amount due' 
+        return res.status(400).json({
+          success: false,
+          message: 'Payment exceeds total amount due'
         });
       }
 
       existingCollection.paidAmount = newPaidAmount;
-      existingCollection.status = newPaidAmount >= existingCollection.totalAmount 
-        ? 'Paid' 
-        : 'Partial';
+      existingCollection.status = newPaidAmount >= existingCollection.totalAmount ? 'Paid' : 'Partial';
       existingCollection.partialPayment = true;
 
       // Add partial payment details for yearly payments
@@ -125,13 +153,16 @@ router.post('/verify-payment', async (req, res) => {
         description: existingCollection.description || 'Partial payment',
         receiptNumber: existingCollection.receiptNumber || null,
       });
+    } else {
+      // For non-yearly payments, set status to 'Paid'
+      existingCollection.status = 'Paid';
     }
 
     // Common updates for all payment types
     existingCollection.kudiCollectionType = 'Online';
-    existingCollection.status= 'Paid';
     existingCollection.accountId = await BankModel.findOne({ primary: true }).lean();
     existingCollection.PaymentDate = new Date();
+    existingCollection.paymentId = payment_id;
 
     // Save changes
     await existingCollection.save({ session });
@@ -140,7 +171,7 @@ router.post('/verify-payment', async (req, res) => {
     const ref = `/house/house-details/${existingCollection.houseId._id}`;
     const transaction = await creditAccount(
       existingCollection.accountId._id,
-      numericAmount, // Use validated numeric amount
+      numericAmount,
       existingCollection.description,
       existingCollection.category.name,
       ref,
@@ -238,7 +269,8 @@ router.get('/rent-collection/:buildingID/:roomId/:contractId/:rentId', async (re
     return res.status(200).json({ success: true, rentCollection, tenant });
   } catch (error) {
     logger.error(error);
-    return res.status(500).send({ success: false,
+    return res.status(500).send({
+      success: false,
       message: 'Error: ' + error
     })
   }
@@ -444,7 +476,7 @@ router.post('/generate-payment/link', async (req, res) => {
         whatsappResponse: whatsappResponse.data,
       });
     } catch (whatsappError) {
-      logger.error(`WhatsApp API Error:`,whatsappError.error.message);
+      logger.error(`WhatsApp API Error:`, whatsappError.error.message);
       return res.status(500).json({
         success: false,
         message: 'Payment link generated, but failed to send via WhatsApp',
@@ -453,7 +485,7 @@ router.post('/generate-payment/link', async (req, res) => {
       });
     }
   } catch (error) {
-    logger.error(`Error generating payment link: ${error.message  || error}`);
+    logger.error(`Error generating payment link: ${error.message || error}`);
     return res.status(500).json({
       success: false,
       message: `Internal Server Error`,
@@ -461,6 +493,251 @@ router.post('/generate-payment/link', async (req, res) => {
     });
   }
 });
+
+
+router.get('/payment-status/:orderId', async (req, res) => {
+  const { orderId } = req.params;
+
+  try {
+      // Fetch payment details from the database
+      const payment = await Payment.findOne({ order_id: orderId });
+
+      if (!payment) {
+          return res.status(404).json({ success: false, message: 'Order not found' });
+      }
+
+      // Check if payment is verified
+      if (payment.status === 'captured') {
+          return res.status(200).json({
+              success: true,
+              paymentVerified: true,
+              message: 'Payment verified successfully',
+          });
+      }
+
+      return res.status(200).json({
+          success: true,
+          paymentVerified: false,
+          message: 'Payment not verified yet',
+      });
+  } catch (error) {
+      console.error('Error fetching payment status:', error);
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+
+
+// Function to validate Razorpay webhook signature
+const validateWebhookSignature = (payload, signature, secret) => {
+  const generatedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  return generatedSignature === signature;
+};
+
+// Webhook endpoint to handle Razorpay events
+router.post('/webhook', async (req, res) => {
+  const signature = req.headers['x-razorpay-signature']; // The signature from Razorpay header
+
+  // Validate the signature
+  const isValid = validateWebhookSignature(
+    JSON.stringify(req.body),
+    signature,
+    process.env.RAZORPAY_WEBHOOK_SECRET // Razorpay Webhook Secret from environment variables
+  );
+
+  if (isValid) {
+    const { event, payload } = req.body;
+
+    switch (event) {
+      case 'payment.authorized':
+        break;
+
+      case 'payment.captured':
+
+        const { order_id } = payload.payment.entity;
+          // Find the payment record in the database
+          const payment = await Payment.findOne({ order_id });
+
+          if (!payment) {
+            logger.error('Payment record not found for order_id:', order_id);
+            return res.status(404).send('Payment record not found');
+          }
+          payment.status = 'captured';
+          await payment.save();
+
+          logger.error('Payment verified');
+        break;
+
+      case 'payment.failed':
+        // Handle failed payment event (you can add any custom logic here)
+        logger.error('Payment failed:', payload);
+        break;
+
+      default:
+        logger.error(`Unhandled event: ${event}`);
+        break;
+    }
+
+    // Send a success response to Razorpay
+    res.status(200).send();
+  } else {
+    // Invalid signature response
+    logger.error('Invalid signature');
+    res.status(400).send('Invalid signature');
+  }
+});
+
+// const verifyPayment = async (req, res) => {
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+
+//   try {
+//     // Validate request body
+//     const { order_id, payment_id, signature, receiptNumber, amount } = req.body;
+//     if (!order_id || !payment_id || !signature || !receiptNumber || !amount) {
+//       await session.abortTransaction();
+//       session.endSession();
+//       return res.status(400).json({ success: false, message: 'Missing required fields' });
+//     }
+
+//     // Find collection by receipt number
+//     const existingCollection = await kudiCollection.findOne({ receiptNumber })
+//       .populate('memberId houseId')
+//       .session(session);
+
+//     if (!existingCollection) {
+//       await session.abortTransaction();
+//       session.endSession();
+//       return res.status(404).json({ success: false, message: 'Collection not found' });
+//     }
+
+//     // Verify Razorpay signature
+//     const generatedSignature = crypto
+//       .createHmac('sha256', RAZORPAY_KEY_SECRET)
+//       .update(`${order_id}|${payment_id}`)
+//       .digest('hex');
+
+//     if (generatedSignature !== signature) {
+//       await session.abortTransaction();
+//       session.endSession();
+//       return res.status(400).json({ success: false, message: 'Invalid signature' });
+//     }
+
+//     // Validate payment amount
+//     const numericAmount = Number(amount);
+//     if (isNaN(numericAmount)) {
+//       await session.abortTransaction();
+//       session.endSession();
+//       return res.status(400).json({ success: false, message: 'Invalid amount format' });
+//     }
+
+//     const isYearlyPayment = existingCollection.paymentType === 'yearly';
+
+//     // Validate monthly payment amount
+//     if (!isYearlyPayment && numericAmount !== existingCollection.amount) {
+//       await session.abortTransaction();
+//       session.endSession();
+//       return res.status(400).json({
+//         success: false,
+//         message: `Monthly payment must be exactly ₹${existingCollection.amount}`
+//       });
+//     }
+
+//     // Validate yearly payment limits
+//     if (isYearlyPayment) {
+//       const newPaidAmount = existingCollection.paidAmount + numericAmount;
+//       if (newPaidAmount > existingCollection.totalAmount) {
+//         await session.abortTransaction();
+//         session.endSession();
+//         return res.status(400).json({
+//           success: false,
+//           message: 'Payment exceeds total amount due'
+//         });
+//       }
+
+//       existingCollection.paidAmount = newPaidAmount;
+//       existingCollection.status = newPaidAmount >= existingCollection.totalAmount ? 'Paid' : 'Partial';
+//       existingCollection.partialPayment = true;
+
+//       // Add partial payment details for yearly payments
+//       existingCollection.partialPayments.push({
+//         amount: numericAmount,
+//         paymentDate: new Date(),
+//         description: existingCollection.description || 'Partial payment',
+//         receiptNumber: existingCollection.receiptNumber || null,
+//       });
+//     } else {
+//       // For non-yearly payments, set status to 'Paid'
+//       existingCollection.status = 'Paid';
+//     }
+
+//     // Common updates for all payment types
+//     existingCollection.kudiCollectionType = 'Online';
+//     existingCollection.accountId = await BankModel.findOne({ primary: true }).lean();
+//     existingCollection.PaymentDate = new Date();
+//     existingCollection.paymentId = payment_id;
+
+//     // Save changes
+//     await existingCollection.save({ session });
+
+//     // Credit account logic
+//     const ref = `/house/house-details/${existingCollection.houseId._id}`;
+//     const transaction = await creditAccount(
+//       existingCollection.accountId._id,
+//       numericAmount,
+//       existingCollection.description,
+//       existingCollection.category.name,
+//       ref,
+//       session
+//     );
+
+//     if (!transaction) {
+//       await session.abortTransaction();
+//       session.endSession();
+//       return res.status(400).json({ success: false, message: 'Error crediting account' });
+//     }
+
+//     // Commit the transaction
+//     await session.commitTransaction();
+//     session.endSession();
+
+//     // Send WhatsApp notifications only after the transaction is committed
+//     try {
+//       if (isYearlyPayment) {
+//         if (existingCollection.paidAmount >= existingCollection.totalAmount) {
+//           await sendWhatsAppYearlyReceipt(existingCollection);
+//         } else {
+//           await sendWhatsAppPartial(existingCollection, numericAmount);
+//         }
+//       } else {
+//         await sendWhatsAppMessageFunction(existingCollection);
+//       }
+//     } catch (notificationError) {
+//       // Log the notification error but do not roll back the transaction
+//       logger.error('Error sending WhatsApp notification:', notificationError);
+//     }
+
+//     return {
+//       success: true,
+//       message: 'Payment verified and processed successfully',
+//       updatedCollection: existingCollection
+//     };
+
+//   } catch (error) {
+//     logger.error('Payment verification error:', error);
+
+//     // Rollback the transaction only if it hasn't been committed
+//     if (session.inTransaction()) {
+//       await session.abortTransaction();
+//     }
+//     session.endSession();
+
+//     throw new Error(`Payment processing failed: ${error.message}`);
+//   }
+// };
 
 
 

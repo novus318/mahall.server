@@ -546,4 +546,27 @@ router.post('/change-paymentType', async (req, res) => {
 });
 
 
+
+// router.get('/get-payment/undone', async (req, res) => {
+//     try {
+//         const undoneCollections = await kudiCollection.find({
+//             status: 'Unpaid',
+//         });
+
+//         res.status(200).json({
+//             success: true,
+//             message: 'Undone collections fetched successfully',
+//             data: undoneCollections,
+//         });
+//     } catch (error) {
+//         logger.error('Error in /get-payment/undone:', error);
+//         res.status(500).json({
+//             success: false,
+//             message: 'Server error',
+//             error: error.message,
+//         });
+//     }
+// });
+
+
 export default router

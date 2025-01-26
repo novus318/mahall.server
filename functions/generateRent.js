@@ -22,8 +22,8 @@ export const collectRent = async () => {
 
         if (activeContract) {
           const today = new Date();
-          const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1); 
-          const period = `${lastMonth.toLocaleString('default', { month: 'long' })} ${lastMonth.getFullYear()}`;
+          const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1); 
+          const period = `${currentMonth.toLocaleString('default', { month: 'long' })} ${currentMonth.getFullYear()}`;
 
           const existingCollection = activeContract.rentCollection.find(
             (collection) => collection.period === period

@@ -559,11 +559,27 @@ router.put('/update/rent-collection/:buildingID/:roomId/:contractId', async (req
   session.startTransaction(); // Start the transaction
 
   try {
-    const { buildingID, roomId,contractId } = req.params;
-    const { rentCollectionId, paymentType, newStatus, accountId, amount, leaveDays, leaveDeduction, advanceRepayment, rejectionReason, paymentDate } = req.body;
+    const { buildingID, roomId, contractId } = req.params;
+    const {
+      rentCollectionId,
+      paymentType,
+      newStatus,
+      accountId,
+      amount,
+      leaveDays,
+      leaveDeduction,
+      advanceRepayment,
+      rejectionReason,
+      paymentDate,
+    } = req.body;
 
-    if (newStatus === 'Paid' && !accountId) {
-      return res.status(400).json({ message: 'Account ID is required for Paid status.' });
+    // Validate required fields based on status
+    if (['Paid', 'Partial'].includes(newStatus) && !accountId) {
+      return res.status(400).json({ message: 'Account ID is required for Paid or Partial status.' });
+    }
+
+    if (newStatus === 'Rejected' && !rejectionReason) {
+      return res.status(400).json({ message: 'Rejection reason is required for Rejected status.' });
     }
 
     // Find the building by ID
@@ -580,7 +596,7 @@ router.put('/update/rent-collection/:buildingID/:roomId/:contractId', async (req
 
     // Find the active contract in the room
     const activeContract = room.contractHistory.find(
-      contract => contract._id.toString() === contractId
+      (contract) => contract._id.toString() === contractId
     );
     if (!activeContract) {
       throw new Error('No active contract found');
@@ -602,26 +618,30 @@ router.put('/update/rent-collection/:buildingID/:roomId/:contractId', async (req
     rentCollection.paymentDate = paymentDate;
     rentCollection.onleave.days = leaveDays;
     rentCollection.onleave.deductAmount = leaveDeduction;
-    rentCollection.advanceDeduction = advanceRepayment;
+    rentCollection.advanceDeduction = advanceRepayment || 0;
     rentCollection.accountId = accountId;
 
     let creditTransactionId;
 
-    // Handle payment logic if the status is "Paid"
-    if (newStatus === 'Paid') {
+    // Handle payment logic for "Paid" or "Partial" status
+    if (['Paid', 'Partial'].includes(newStatus)) {
       const description = `Rent from ${activeContract.tenant.name} for building ${building.buildingID} room ${room.roomNumber}`;
       const ref = `/rent/room-details/${building._id}/${roomId}/${contractId}`;
       const category = 'Rent';
 
       try {
         // Credit the account and store transaction ID for possible rollback
-        const creditAmount = Number(amount) + Number(advanceRepayment);
+        const creditAmount = Number(amount) + Number(advanceRepayment || 0);
         const creditTransaction = await creditAccount(accountId, creditAmount, description, category, ref);
-    
+
         creditTransactionId = creditTransaction._id;
 
         // If advance repayment is included, attempt to debit the account
         if (advanceRepayment > 0) {
+          if (activeContract.advancePayment < advanceRepayment) {
+            throw new Error('Advance repayment amount exceeds available advance.');
+          }
+
           const advanceDescription = `Advance repayment for ${activeContract.tenant.name} for building ${building.buildingID} room ${room.roomNumber} with rent`;
           const advanceTransaction = await debitAccount(accountId, advanceRepayment, advanceDescription, category, ref);
 
@@ -644,17 +664,26 @@ router.put('/update/rent-collection/:buildingID/:roomId/:contractId', async (req
       }
     }
 
+    // Handle rejection logic
+    if (newStatus === 'Rejected') {
+      rentCollection.rejectionReason = rejectionReason;
+    }
+
     // Save the changes to the building document
     await building.save({ session });
 
     // Commit the transaction
     await session.commitTransaction();
     session.endSession();
-await sendRentConfirmWhatsapp(rentCollection,activeContract.tenant,room,building,activeContract)
-    res.status(200).json({ success: true, message: 'Rent collection status updated successfully', rentCollection });
 
+    // Send confirmation notification
+    await sendRentConfirmWhatsapp(rentCollection, activeContract.tenant, room, building, activeContract);
+
+    res.status(200).json({ success: true, message: 'Rent collection status updated successfully', rentCollection });
   } catch (error) {
-    logger.error(error)
+    logger.error(error);
+
+    // Rollback the transaction in case of errors
     if (session.inTransaction()) {
       await session.abortTransaction();
     }

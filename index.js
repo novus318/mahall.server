@@ -22,6 +22,7 @@ import settingRoutes from './routes/settingRoutes.js'
 import reportRoutes from './routes/reportRoutes.js'
 import adminRoute from './routes/adminRoute.js'
 import razorpayRoute from './routes/razorpayRoute.js'
+import webhookRoute from './routes/webhookRoute.js'
 import logger from "./utils/logger.js"
 // import { generateMonthlySample } from "./functions/send-sample.js"
 // import { generateYearlyCollectionForSingleHouse, generateYearlyCollections } from "./functions/generateYearlyCollection.js"
@@ -111,6 +112,7 @@ app.use('/server/api/setting',settingRoutes)
 app.use('/server/api/reports',reportRoutes)
 app.use('/server/api/admin',adminRoute)
 app.use('/server/api/razorpay',razorpayRoute)
+app.use('/server/api/webhook',webhookRoute)
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

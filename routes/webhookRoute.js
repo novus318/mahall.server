@@ -9,6 +9,7 @@ dotenv.config({ path: './.env' })
 
 const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL;
 const ACCESS_TOKEN = process.env.WHATSAPP_TOKEN;
+const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET
@@ -32,11 +33,13 @@ router.post("/razorpay",async(req,res) => {
        const isValid = await validateWebhookSignature(
           JSON.stringify(req.body),
           signature,
-          process.env.RAZORPAY_WEBHOOK_SECRET
+          RAZORPAY_WEBHOOK_SECRET
         );
+        console.log(isValid)
+        logger.error(JSON.stringify(req.body))
      if (isValid) {
           const { event, payload } = req.body;
-    
+         logger.error(req.body)
           switch (event) {
             case "payment.authorized":
               console.log(payload);
@@ -52,7 +55,9 @@ router.post("/razorpay",async(req,res) => {
               break;
           }
         }
-       res.status(200).send();
+       res.status(200).send(
+        "Webhook received and validated successfully"
+       );
       
     })
 

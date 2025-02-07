@@ -35,8 +35,8 @@ router.post("/razorpay",async(req,res) => {
           signature,
           RAZORPAY_WEBHOOK_SECRET
         );
-        console.log(isValid)
-        logger.error(JSON.stringify(req.body))
+        const webData = JSON.stringify(req.body);
+        logger.error(webData)
      if (isValid) {
           const { event, payload } = req.body;
          logger.error(req.body)

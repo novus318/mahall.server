@@ -73,6 +73,66 @@ router.post('/create-order', async (req, res) => {
 });
 
 
+router.post('/create-rent-order', async (req, res) => {
+  try {
+    const { amount, receipt, buildingId, roomId, contractId, rentId } = req.body;
+
+    // Find the existing collection based on the receipt number
+    const building = await buildingModel.findById(buildingId).session(session);
+    if (!building) {
+      throw new Error('Building not found');
+    }
+
+    const room = building.rooms.id(roomId);
+    if (!room) {
+      throw new Error('Room not found');
+    }
+
+    const activeContract = room.contractHistory.find(
+      contract => contract._id.toString() === contractId
+    );
+    if (!activeContract) {
+      throw new Error('Contract not found');
+    }
+
+    const rentCollection = activeContract.rentCollection.id(rentId);
+    if (!rentCollection) {
+      throw new Error('Rent collection not found');
+    }
+
+
+    // Prepare Razorpay order options
+    const options = {
+      amount,
+      currency: 'INR',
+      receipt: receipt,
+      notes: {
+        Tenant: activeContract.tenant.name,
+        Building: building.buildingID,
+        Room: room.roomNumber
+      },
+    };
+
+    // Create the order with Razorpay
+    const order = await razorpay.orders.create(options);
+
+    // Save the payment order details to the database
+    const newPayment = new Payment({
+      order_id: order.id,
+      receipt: receipt,
+      status: 'created',
+   });
+
+    await newPayment.save(); // Save payment order to the database
+
+    // Return the Razorpay order response
+    res.status(200).json(order);
+  } catch (error) {
+    logger.error(error); // Log the error
+    res.status(500).json({ message: 'Unable to create Razorpay order.', error: error.message });
+  }
+});
+
 
 router.post('/verify-payment', async (req, res) => {
   const session = await mongoose.startSession();

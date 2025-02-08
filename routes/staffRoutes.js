@@ -191,17 +191,19 @@ router.get('/pending-salaries', async (req, res) => {
 
 router.put('/update/salary/:id', async (req, res) => {
     const payslipId = req.params.id;
-    const { netPay, status, paymentDate, accountId, leaveDays,leaveDeduction, advanceRepayment, rejectionReason } = req.body;
+    const { netPay, status, paymentDate, accountId, leaveDays, leaveDeduction, advanceRepayment, rejectionReason } = req.body;
 
-    if (!payslipId || !status ) {
+    // Validate required fields
+    if (!payslipId || !status) {
         return res.status(400).json({
             success: false,
-            message: 'Missing required fields',
+            message: 'Missing required fields: payslipId and status are required',
         });
     }
 
+    let session;
     try {
-        let session = await mongoose.startSession();
+        session = await mongoose.startSession();
         session.startTransaction();
 
         // Handle rejected payroll
@@ -214,6 +216,7 @@ router.put('/update/salary/:id', async (req, res) => {
 
             if (!updatePayslip) {
                 await session.abortTransaction();
+                session.endSession();
                 return res.status(404).json({ success: false, message: 'Payroll not found' });
             }
 
@@ -241,36 +244,49 @@ router.put('/update/salary/:id', async (req, res) => {
 
         if (!updatePayslip) {
             await session.abortTransaction();
+            session.endSession();
             return res.status(404).json({ success: false, message: 'Payroll not found' });
         }
 
+        // Prepare transaction details
         const category = 'Salary';
-        const pay =Number(netPay);
+        const pay = Number(netPay);
         const ref = `/staff/details/${updatePayslip.staffId._id}`;
         const description = `Salary payment for ${updatePayslip.salaryPeriod.startDate.toDateString()} to ${updatePayslip.salaryPeriod.endDate.toDateString()} for ${updatePayslip.staffId.name}`;
 
-
         // Debit the account for net pay
         const transaction = await debitAccount(accountId, pay, description, category, ref);
-        if (transaction) {
-        debitTransactionId = transaction._id;
-        } else {
+        if (!transaction) {
             await salaryModel.findByIdAndUpdate(payslipId, { status: 'Pending' }, { new: true, session });
             await session.abortTransaction();
-            return res.status(500).json({ message: 'Error processing transaction, please check your account balance' });
+            session.endSession();
+            return res.status(500).json({ success: false, message: 'Error processing transaction, please check your account balance' });
         }
 
+        // Deduct advance repayment if applicable
         if (advanceRepayment > 0) {
-                await staffModel.findByIdAndUpdate(updatePayslip.staffId._id, { $inc: { advancePayment: -advanceRepayment } }, { session });
+            await staffModel.findByIdAndUpdate(
+                updatePayslip.staffId._id,
+                { $inc: { advancePayment: -advanceRepayment } },
+                { session }
+            );
         }
-        // Send WhatsApp notification and finalize
+
+        // Send WhatsApp notification
         await sendWhatsAppSalary(updatePayslip);
+
+        // Commit the transaction
         await session.commitTransaction();
         session.endSession();
 
         res.status(200).json({ success: true, message: 'Payroll updated successfully', updatePayslip });
     } catch (error) {
-        logger.error(error)
+        // Log the error and rollback the transaction
+        logger.error('Error updating payroll:', error);
+        if (session) {
+            await session.abortTransaction();
+            session.endSession();
+        }
         res.status(500).json({
             success: false,
             message: 'Error updating payroll',

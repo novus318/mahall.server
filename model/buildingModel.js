@@ -44,6 +44,9 @@ const rentCollectionSchema = new mongoose.Schema({
     status: { type: String, enum: ['Pending', 'Paid','Rejected','Partial'], default: 'Pending' },
   }, { timestamps: true });
 
+
+
+  
   const depositTransactionSchema = new mongoose.Schema({
     amount: { 
         type: Number, 

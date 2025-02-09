@@ -82,6 +82,7 @@ const sendWhatsapp = async (rentCollection, tenant,room,building,contract) => {
                             { type: 'text', text: `${tenant.name}` },
                             { type: 'text', text: `${rentCollection.period}`},     
                             { type: 'text', text: `${room.roomNumber}` },   
+                            { type: 'text', text: `${rentCollection.period}`},  
                             { type: 'text', text: `${rentCollection.amount}`},          
                         ]
                     },

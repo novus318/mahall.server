@@ -512,15 +512,19 @@ router.get('/rent-collections/pending', async (req, res) => {
 
   try {
     const buildings = await buildingModel.find({
-      'rooms.contractHistory.rentCollection.status': 'Pending'
-    }).lean();
+      rooms: {
+        $elemMatch: {
+          'contractHistory.rentCollection.status': { $in: ['Pending', 'Partial'] }
+        }
+      }
+    }).limit(60).lean();
     const pendingCollections = [];
 
     buildings.forEach((building) => {
       building.rooms.forEach((room) => {
         room.contractHistory.forEach((contract) => {
           contract.rentCollection.forEach((collection) => {
-            if (collection.status === 'Pending') {
+            if (collection.status === 'Pending' || collection.status === 'Partial') {
               pendingCollections.push({
                 buildingID: building.buildingID,
                 buildingId:building._id,
@@ -536,9 +540,12 @@ router.get('/rent-collections/pending', async (req, res) => {
                 deposit: contract.deposit,
                 period: collection.period,
                 amount: collection.amount,
+                PaymentAmount: collection.PaymentAmount,
+                paidAmount: collection.paidAmount || 0,
+                status: collection.status,
+                partialPayments: collection.partialPayments,
                 dueDate: collection.date,
                 advancePayment:contract.advancePayment,
-                status: collection.status,
               });
             }
           });
@@ -555,141 +562,196 @@ router.get('/rent-collections/pending', async (req, res) => {
 })
 
 router.put('/update/rent-collection/:buildingID/:roomId/:contractId', async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const { buildingID, roomId, contractId } = req.params;
+        const {
+            rentCollectionId,
+            paymentType,
+            accountId,
+            amount,
+            PaymentAmount,
+            leaveDays,
+            leaveDeduction,
+            rejectionReason,
+            paymentDate,
+            newStatus
+        } = req.body;
+
+        // Validate payment operations
+        if (newStatus !== 'Rejected') {
+            if (!accountId) return res.status(400).json({ message: 'Account ID required for payments' });
+            if (!amount || amount <= 0) return res.status(400).json({ message: 'Valid payment amount required' });
+        }
+
+        // Validate rejection
+        if (newStatus === 'Rejected' && !rejectionReason) {
+            return res.status(400).json({ message: 'Rejection reason required' });
+        }
+
+        // Retrieve related documents
+        const building = await buildingModel.findById(buildingID).session(session);
+        const room = building?.rooms.id(roomId);
+        const contract = room?.contractHistory.id(contractId);
+        const rentCollection = contract?.rentCollection.id(rentCollectionId);
+
+        if (!building || !room || !contract || !rentCollection) {
+            return res.status(404).json({ message: 'Resource not found' });
+        }
+
+        // Handle rejection
+        if (newStatus === 'Rejected') {
+            rentCollection.status = 'Rejected';
+            rentCollection.rejectionReason = rejectionReason;
+        } 
+        // Handle payments
+        else {
+            // Update payment details
+            rentCollection.paymentMethod = paymentType;
+            rentCollection.PaymentAmount = PaymentAmount;
+            rentCollection.paymentDate = paymentDate || new Date();
+            rentCollection.onleave = { days: leaveDays, deductAmount: leaveDeduction };
+            rentCollection.accountId = accountId;
+
+            // Calculate adjusted amount with deductions
+            const deductions = (rentCollection.onleave.deductAmount || 0) + (rentCollection.advanceDeduction || 0);
+            const adjustedAmount = rentCollection.amount - deductions;
+
+            // Update paid amount and status
+            rentCollection.paidAmount = Math.min(rentCollection.paidAmount + amount, adjustedAmount);
+            rentCollection.status = rentCollection.paidAmount >= adjustedAmount ? 'Paid' : 'Partial';
+
+            // Record partial payment
+            rentCollection.partialPayments.push({
+                amount: amount,
+                paymentDate: rentCollection.paymentDate,
+                description: `Payment for ${building.buildingID} - Room ${room.roomNumber}`,
+                receiptNumber: `RC-${Date.now()}`
+            });
+
+            // Process financial transaction
+            await creditAccount(
+                accountId,
+                amount,
+                `Rent from ${contract.tenant.name} for building ${building.buildingID} room ${room.roomNumber}`,
+                'Rent',
+                `/rent/room-details/${building._id}/${roomId}/${contractId}`
+            ).catch(err => {
+                throw new Error(`Payment processing failed: ${err.message}`);
+            });
+        }
+
+        await building.save({ session });
+        await session.commitTransaction();
+
+        res.status(200).json({
+            success: true,
+            message: `Rent ${newStatus === 'Rejected' ? 'rejected' : 'updated'} successfully`,
+            data: rentCollection
+        });
+
+    } catch (error) {
+      console.log(error);
+        await session.abortTransaction();
+        logger.error(`Rent update failed: ${error.message}`);
+        res.status(500).json({ 
+            success: false, 
+            message: error.message.startsWith('Payment processing') 
+                ? 'Payment failed - changes rolled back' 
+                : 'Operation failed'
+        });
+    } finally {
+        session.endSession();
+    }
+});
+
+
+router.put('/update-partial/rent-collection/:buildingID/:roomId/:contractId', async (req, res) => {
   const session = await mongoose.startSession();
-  session.startTransaction(); // Start the transaction
+  session.startTransaction();
 
   try {
     const { buildingID, roomId, contractId } = req.params;
-    const {
-      rentCollectionId,
-      paymentType,
-      newStatus,
-      accountId,
-      amount,
-      leaveDays,
-      leaveDeduction,
-      advanceRepayment,
-      rejectionReason,
-      paymentDate,
-    } = req.body;
+    const { rentCollectionId, paymentType, accountId, amount,paymentDate } = req.body;
 
-    // Validate required fields based on status
-    if (['Paid', 'Partial'].includes(newStatus) && !accountId) {
-      return res.status(400).json({ message: 'Account ID is required for Paid or Partial status.' });
+    // Validate input parameters
+    if (!buildingID || !roomId || !contractId || !rentCollectionId || !paymentType || !accountId || !amount) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
-    if (newStatus === 'Rejected' && !rejectionReason) {
-      return res.status(400).json({ message: 'Rejection reason is required for Rejected status.' });
-    }
-
-    // Find the building by ID
+    // Retrieve related documents
     const building = await buildingModel.findById(buildingID).session(session);
     if (!building) {
-      throw new Error('Building not found');
+      return res.status(404).json({ success: false, message: 'Building not found' });
     }
 
-    // Find the room within the building
     const room = building.rooms.id(roomId);
     if (!room) {
-      throw new Error('Room not found');
+      return res.status(404).json({ success: false, message: 'Room not found' });
     }
 
-    // Find the active contract in the room
-    const activeContract = room.contractHistory.find(
-      (contract) => contract._id.toString() === contractId
-    );
-    if (!activeContract) {
-      throw new Error('No active contract found');
+    const contract = room.contractHistory.id(contractId);
+    if (!contract) {
+      return res.status(404).json({ success: false, message: 'Contract not found' });
     }
 
-    // Find the rent collection record
-    const rentCollection = activeContract.rentCollection.id(rentCollectionId);
+    const rentCollection = contract.rentCollection.id(rentCollectionId);
     if (!rentCollection) {
-      throw new Error('Rent collection not found');
+      return res.status(404).json({ success: false, message: 'Rent collection not found' });
     }
 
-    // Store the previous status in case of rollback
-    const previousStatus = rentCollection.status;
-
-    // Update rent collection fields
-    rentCollection.status = newStatus;
-    rentCollection.PaymentAmount = amount;
+    // Update payment details
     rentCollection.paymentMethod = paymentType;
-    rentCollection.paymentDate = paymentDate;
-    rentCollection.onleave.days = leaveDays;
-    rentCollection.onleave.deductAmount = leaveDeduction;
-    rentCollection.advanceDeduction = advanceRepayment || 0;
-    rentCollection.accountId = accountId;
 
-    let creditTransactionId;
+    // Update paid amount and status
+    rentCollection.paidAmount = Math.min(rentCollection.paidAmount + amount, rentCollection.PaymentAmount);
+    rentCollection.status = rentCollection.paidAmount >= rentCollection.PaymentAmount ? 'Paid' : 'Partial';
 
-    // Handle payment logic for "Paid" or "Partial" status
-    if (['Paid', 'Partial'].includes(newStatus)) {
-      const description = `Rent from ${activeContract.tenant.name} for building ${building.buildingID} room ${room.roomNumber}`;
-      const ref = `/rent/room-details/${building._id}/${roomId}/${contractId}`;
-      const category = 'Rent';
+    // Record partial payment
+    rentCollection.partialPayments.push({
+      amount: amount,
+      paymentDate: paymentDate || Date.now(),
+      description: `Payment for ${building.buildingID} - Room ${room.roomNumber}`,
+      receiptNumber: `RC-${rentCollection.period}`
+    });
 
-      try {
-        // Credit the account and store transaction ID for possible rollback
-        const creditAmount = Number(amount) + Number(advanceRepayment || 0);
-        const creditTransaction = await creditAccount(accountId, creditAmount, description, category, ref);
+    // Process financial transaction
+    await creditAccount(
+      accountId,
+      amount,
+      `Rent from ${contract.tenant.name} for building ${building.buildingID} room ${room.roomNumber}`,
+      'Rent',
+      `/rent/room-details/${building._id}/${roomId}/${contractId}`
+    ).catch(err => {
+      throw new Error(`Payment processing failed: ${err.message}`);
+    });
 
-        creditTransactionId = creditTransaction._id;
-
-        // If advance repayment is included, attempt to debit the account
-        if (advanceRepayment > 0) {
-          if (activeContract.advancePayment < advanceRepayment) {
-            throw new Error('Advance repayment amount exceeds available advance.');
-          }
-
-          const advanceDescription = `Advance repayment for ${activeContract.tenant.name} for building ${building.buildingID} room ${room.roomNumber} with rent`;
-          const advanceTransaction = await debitAccount(accountId, advanceRepayment, advanceDescription, category, ref);
-
-          if (!advanceTransaction) {
-            await deleteCreditTransaction(creditTransactionId);
-            rentCollection.status = previousStatus;
-            throw new Error('Error debiting advance repayment account');
-          } else {
-            // Deduct advance payment from active contract
-            activeContract.advancePayment -= Number(advanceRepayment);
-          }
-        }
-      } catch (err) {
-        rentCollection.status = previousStatus;
-        if (creditTransactionId) {
-          // Rollback credit transaction if credit was successful but debit failed
-          await deleteCreditTransaction(creditTransactionId);
-        }
-        throw new Error('Error processing payment: ' + err.message);
-      }
-    }
-
-    // Handle rejection logic
-    if (newStatus === 'Rejected') {
-      rentCollection.rejectionReason = rejectionReason;
-    }
-
-    // Save the changes to the building document
+    // Save changes and commit transaction
     await building.save({ session });
-
-    // Commit the transaction
     await session.commitTransaction();
-    session.endSession();
 
-    // Send confirmation notification
-    await sendRentConfirmWhatsapp(rentCollection, activeContract.tenant, room, building, activeContract);
+    res.status(200).json({
+      success: true,
+      message: 'Rent updated successfully',
+      data: rentCollection
+    });
 
-    res.status(200).json({ success: true, message: 'Rent collection status updated successfully', rentCollection });
   } catch (error) {
-    logger.error(error);
+    // Log the error and roll back the transaction
+    await session.abortTransaction();
+    logger.error(`Rent update failed: ${error.message}`);
 
-    // Rollback the transaction in case of errors
-    if (session.inTransaction()) {
-      await session.abortTransaction();
-    }
+    res.status(500).json({
+      success: false,
+      message: error.message.startsWith('Payment processing') 
+        ? 'Payment failed - changes rolled back' 
+        : 'Operation failed'
+    });
+  } finally {
+    // End the session
     session.endSession();
-
-    res.status(500).json({ success: false, message: 'An error occurred', error: error.message });
   }
 });
 

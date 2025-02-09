@@ -74,62 +74,90 @@ router.post('/create-order', async (req, res) => {
 
 
 router.post('/create-rent-order', async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    const { amount, receipt, buildingId, roomId, contractId, rentId } = req.body;
+      const { amount, receipt, buildingId, roomId, contractId, rentId } = req.body;
 
-    // Find the existing collection based on the receipt number
-    const building = await buildingModel.findById(buildingId).session(session);
-    if (!building) {
-      throw new Error('Building not found');
-    }
+      // Validate required fields
+      if (!amount || !receipt || !buildingId || !roomId || !contractId || !rentId) {
+          throw new Error('Missing required fields in the request body.');
+      }
 
-    const room = building.rooms.id(roomId);
-    if (!room) {
-      throw new Error('Room not found');
-    }
+      // Find the building
+      const building = await buildingModel.findById(buildingId).session(session);
+      if (!building) {
+          throw new Error('Building not found.');
+      }
 
-    const activeContract = room.contractHistory.find(
-      contract => contract._id.toString() === contractId
-    );
-    if (!activeContract) {
-      throw new Error('Contract not found');
-    }
+      // Find the room within the building
+      const room = building.rooms.id(roomId);
+      if (!room) {
+          throw new Error('Room not found.');
+      }
 
-    const rentCollection = activeContract.rentCollection.id(rentId);
-    if (!rentCollection) {
-      throw new Error('Rent collection not found');
-    }
+      // Find the active contract within the room
+      const activeContract = room.contractHistory.find(
+          (contract) => contract._id.toString() === contractId
+      );
+      if (!activeContract) {
+          throw new Error('Contract not found.');
+      }
 
+      // Find the rent collection within the contract
+      const rentCollection = activeContract.rentCollection.id(rentId);
+      if (!rentCollection) {
+          throw new Error('Rent collection not found.');
+      }
 
-    // Prepare Razorpay order options
-    const options = {
-      amount,
-      currency: 'INR',
-      receipt: receipt,
-      notes: {
-        Tenant: activeContract.tenant.name,
-        Building: building.buildingID,
-        Room: room.roomNumber
-      },
-    };
+      // Prepare Razorpay order options
+      const options = {
+          amount: amount, // Amount in paisa
+          currency: 'INR',
+          receipt: receipt,
+          notes: {
+              Tenant: activeContract.tenant.name,
+              Building: building.buildingID,
+              Room: room.roomNumber,
+              buildingId: buildingId,
+              roomId: roomId,
+              contractId: contractId,
+              rentId: rentId,
+          },
+      };
 
-    // Create the order with Razorpay
-    const order = await razorpay.orders.create(options);
+      // Create the order with Razorpay
+      const order = await razorpay.orders.create(options);
 
-    // Save the payment order details to the database
-    const newPayment = new Payment({
-      order_id: order.id,
-      receipt: receipt,
-      status: 'created',
-   });
+      // Save the payment order details to the database
+      const newPayment = new Payment({
+          order_id: order.id,
+          receipt: receipt,
+          status: 'created',
+          amount: amount,
+          currency: 'INR',
+          notes: options.notes,
+      });
 
-    await newPayment.save(); // Save payment order to the database
+      await newPayment.save({ session }); // Save payment order to the database
 
-    // Return the Razorpay order response
-    res.status(200).json(order);
+      // Commit the transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      // Return the Razorpay order response
+      res.status(200).json(order);
   } catch (error) {
-    logger.error(error); // Log the error
-    res.status(500).json({ message: 'Unable to create Razorpay order.', error: error.message });
+      // Abort the transaction in case of an error
+      await session.abortTransaction();
+      session.endSession();
+
+      logger.error('Error creating Razorpay order:', error); // Log the error
+      res.status(500).json({
+          message: 'Unable to create Razorpay order.',
+          error: error.message,
+      });
   }
 });
 

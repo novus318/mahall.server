@@ -9,6 +9,7 @@ import { sendWhatsAppMessageFunction } from "../functions/generateMonthlyCollect
 import BankModel from "../model/BankModel.js";
 import logger from "../utils/logger.js";
 import { sendWhatsAppPartial, sendWhatsAppYearlyReceipt } from "../functions/generateYearlyCollection.js";
+import buildingModel from "../model/buildingModel.js";
 
 
 dotenv.config({ path: './.env' })
@@ -146,6 +147,92 @@ const updateReceiptAndAmount = async (props) => {
     }
   };
 
+  const updateRentCollection = async (props) => {
+    const { buildingId, roomId, contractId, rentId, amount, paymentDate } = props;
+  
+    // Validate required fields
+    if (!buildingId || !roomId || !contractId || !rentId || !amount) {
+      throw new Error('Missing required fields');
+    }
+  
+    const session = await mongoose.startSession();
+    session.startTransaction();
+  
+    try {
+      // Retrieve the building, room, contract, and rent collection
+      const building = await buildingModel.findById(buildingId).session(session);
+      if (!building) {
+        throw new Error('Building not found');
+      }
+  
+      const room = building.rooms.id(roomId);
+      if (!room) {
+        throw new Error('Room not found');
+      }
+  
+      const contract = room.contractHistory.id(contractId);
+      if (!contract) {
+        throw new Error('Contract not found');
+      }
+  
+      const rentCollection = contract.rentCollection.id(rentId);
+      if (!rentCollection) {
+        throw new Error('Rent collection not found');
+      }
+  
+      // Validate payment amount
+      const numericAmount = Number(amount);
+      if (isNaN(numericAmount) || numericAmount <= 0) {
+        throw new Error('Invalid payment amount');
+      }
+  
+      // Update rent collection details
+      rentCollection.paymentMethod = 'Online';
+      rentCollection.PaymentAmount = rentCollection.amount;
+      rentCollection.paymentDate = paymentDate || new Date();
+      rentCollection.paidAmount = Math.min(rentCollection.paidAmount + numericAmount, rentCollection.PaymentAmount);
+      rentCollection.status = rentCollection.paidAmount >= rentCollection.PaymentAmount ? 'Paid' : 'Partial';
+  
+      // Record partial payment
+      rentCollection.partialPayments.push({
+        amount: numericAmount,
+        paymentDate: paymentDate || new Date(),
+        description: `Payment for ${building.buildingID} - Room ${room.roomNumber}`,
+        receiptNumber: `RC-${rentCollection.period}`,
+      });
+  
+      // Retrieve the primary bank account
+      const primaryAccount = await BankModel.findOne({ primary: true }).lean();
+      if (!primaryAccount) {
+        throw new Error('Primary bank account not found');
+      }
+      rentCollection.accountId = primaryAccount._id;
+  
+      // Process financial transaction
+      await creditAccount(
+        primaryAccount._id,
+        numericAmount,
+        `Rent from ${contract.tenant.name} for building ${building.buildingID} room ${room.roomNumber}`,
+        'Rent',
+        `/rent/room-details/${building._id}/${roomId}/${contractId}`
+      );
+  
+      // Save changes and commit transaction
+      await building.save({ session });
+      await session.commitTransaction();
+  
+      return true; // Return true if everything is successful
+    } catch (error) {
+      // Log the error and roll back the transaction
+      await session.abortTransaction();
+      logger.error(`updateRentCollection failed: ${error.message}`);
+      throw error; // Re-throw the error for the caller to handle
+    } finally {
+      // End the session
+      session.endSession();
+    }
+  };
+
 
 const validateWebhookSignature = (payload, signature, secret) => {
   const generatedSignature = crypto
@@ -177,12 +264,22 @@ router.post("/razorpay", async (req, res) => {
       case "payment.captured":
         try {
           if (payload?.payment?.notes?.Receipt) {
-            const { receiptNumber, amount } = payload.payment.notes;
-            await updateReceiptAndAmount({ receiptNumber, amount });
-            logger.info("Receipt updated successfully", { receiptNumber, amount });
-          } else if (payload?.payment?.notes?.Tenant) {
+            const receiptNumber = payload.payment.notes.Receipt;
+            const amountInRupee = payload.payment.entity.amount / 100;
+        
+            await updateReceiptAndAmount({ receiptNumber, amount: amountInRupee }); // Use correct amount
+            logger.info("Receipt updated successfully", { receiptNumber, amountInRupee });
+        }else if (payload?.payment?.notes?.Tenant) {
+          const amountInRupees = payload.payment.entity.amount / 100;
+          await updateRentCollection({
+            buildingId: payload?.payment?.notes?.buildingId,
+            roomId: payload?.payment?.notes?.roomId,
+            contractId: payload?.payment?.notes?.contractId,
+            rentId: payload?.payment?.notes?.rentId,
+            amount: amountInRupees,
+            paymentDate: new Date(),
+          });
             logger.info("Rent payment detected", { tenant: payload.payment.notes.Tenant });
-            // Add rent processing logic here
           }
         } catch (error) {
           logger.error("Error processing payment.captured event", { error, payload });
@@ -201,6 +298,30 @@ router.post("/razorpay", async (req, res) => {
   }
 });
 
+
+// router.get('/test',async (req, res) => {
+//   try {
+//     await updateRentCollection({
+//       buildingId: '67a700aa4a4b58998216e05c',
+//       roomId: '67a700aa4a4b58998216e05e',
+//       contractId: '67a841bf9c2089be0b0d1256',
+//       rentId: '67a841ea63a4fb8cb379c5f6',
+//       amount: 2000,
+//       paymentDate: new Date(),
+//     });
+//     return res.status(200).json({
+//       success: true,
+//       message: 'Payment successful',
+//     });
+//   } catch (error) {
+//     logger.error('Error in test route:', error);
+//     return res.status(500).json({
+//       success: false,
+//       message: 'Internal Server Error',
+//       error: error.message,
+//     });
+//   }
+// })
 
 
 

@@ -270,7 +270,7 @@ router.put('/update/collection/:id', async (req, res) => {
 
             existingCollection.kudiCollectionType = paymentType;
             existingCollection.accountId = targetAccount;
-            existingCollection.paidAmount += amount; // Add the partial payment amount
+            existingCollection.paidAmount += amount;
 
             // Check if the total amount is fully paid
             if (existingCollection.paidAmount >= existingCollection.totalAmount) {

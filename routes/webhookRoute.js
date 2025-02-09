@@ -244,59 +244,67 @@ const validateWebhookSignature = (payload, signature, secret) => {
 
 router.post("/razorpay", async (req, res) => {
   const signature = req.headers["x-razorpay-signature"];
+  const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
   // Validate webhook signature
   try {
     const isValid = await validateWebhookSignature(
       JSON.stringify(req.body),
       signature,
-      process.env.RAZORPAY_WEBHOOK_SECRET
+      webhookSecret
     );
 
     if (!isValid) {
-      logger.warn("Invalid webhook signature");
-      return res.status(400).send("Invalid signature");
+      logger.warn("Invalid webhook signature", { signature });
+      return res.status(400).json({ error: "Invalid signature" });
     }
 
     const { event, payload } = req.body;
+
     // Handle events
     switch (event) {
       case "payment.captured":
-        try {
-          if (payload?.payment?.notes?.Receipt) {
-            const receiptNumber = payload.payment.notes.Receipt;
-            const amountInRupee = payload.payment.entity.amount / 100;
-        
-            await updateReceiptAndAmount({ receiptNumber, amount: amountInRupee }); // Use correct amount
-            logger.info("Receipt updated successfully", { receiptNumber, amountInRupee });
-        }else if (payload?.payment?.notes?.Tenant) {
-          const amountInRupees = payload.payment.entity.amount / 100;
-          await updateRentCollection({
-            buildingId: payload?.payment?.notes?.buildingId,
-            roomId: payload?.payment?.notes?.roomId,
-            contractId: payload?.payment?.notes?.contractId,
-            rentId: payload?.payment?.notes?.rentId,
-            amount: amountInRupees,
-            paymentDate: new Date(),
-          });
-            logger.info("Rent payment detected", { tenant: payload.payment.notes.Tenant });
-          }
-        } catch (error) {
-          logger.error("Error processing payment.captured event", { error, payload });
-        }
+        await handlePaymentCapturedEvent(payload);
         break;
-
       default:
         break;
     }
 
     // Acknowledge webhook receipt
-    res.status(200).send();
+    res.status(200).json({ status: "success" });
   } catch (error) {
-    logger.error("Error processing Razorpay webhook", { error });
-    res.status(500).send("Internal Server Error");
+    logger.error("Error processing Razorpay webhook", { error: error.message, stack: error.stack });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+async function handlePaymentCapturedEvent(payload) {
+  try {
+    if (payload?.payment?.notes?.Receipt) {
+      const receiptNumber = payload.payment.notes.Receipt;
+      const amountInRupee = payload.payment.entity.amount / 100;
+
+      await updateReceiptAndAmount({ receiptNumber, amount: amountInRupee });
+      logger.info("Receipt updated successfully", { receiptNumber, amountInRupee });
+    } else if (payload?.payment?.notes?.Tenant) {
+      const amountInRupees = payload.payment.entity.amount / 100;
+
+      await updateRentCollection({
+        buildingId: payload.payment.notes.buildingId,
+        roomId: payload.payment.notes.roomId,
+        contractId: payload.payment.notes.contractId,
+        rentId: payload.payment.notes.rentId,
+        amount: amountInRupees,
+        paymentDate: new Date(),
+      });
+
+      logger.info("Rent payment detected", { tenant: payload.payment.notes.Tenant });
+    }
+  } catch (error) {
+    logger.error("Error processing payment.captured event", { error: error.message, payload });
+    throw error; // Re-throw to handle it in the main catch block
+  }
+}
 
 
 // router.get('/test',async (req, res) => {

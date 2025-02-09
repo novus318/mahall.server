@@ -245,7 +245,6 @@ const validateWebhookSignature = (payload, signature, secret) => {
 router.post("/razorpay", async (req, res) => {
   const signature = req.headers["x-razorpay-signature"];
   const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
-  logger.info(webhookSecret);
   // Validate webhook signature
   try {
     const isValid = await validateWebhookSignature(
@@ -281,21 +280,20 @@ router.post("/razorpay", async (req, res) => {
 
 async function handlePaymentCapturedEvent(payload) {
   try {
-    logger.info(JSON.stringify(payload));
-    if (payload?.payment?.notes?.Receipt) {
-      const receiptNumber = payload.payment.notes.Receipt;
-      const amountInRupee = payload.payment.entity.amount / 100;
+    if (payload?.payment?.entity?.notes?.Receipt) {
+      const receiptNumber = payload.payment?.entity.notes.Receipt;
+      const amountInRupee = payload.payment?.entity.amount / 100;
 
       await updateReceiptAndAmount({ receiptNumber, amount: amountInRupee });
       logger.info("Receipt updated successfully", { receiptNumber, amountInRupee });
-    } else if (payload?.payment?.notes?.Tenant) {
+    } else if (payload?.payment?.entity.notes?.Tenant) {
       const amountInRupees = payload.payment.entity.amount / 100;
 
       await updateRentCollection({
-        buildingId: payload.payment.notes.buildingId,
-        roomId: payload.payment.notes.roomId,
-        contractId: payload.payment.notes.contractId,
-        rentId: payload.payment.notes.rentId,
+        buildingId: payload.payment?.entity.notes.buildingId,
+        roomId: payload.payment?.entity.notes.roomId,
+        contractId: payload.payment?.entity.notes.contractId,
+        rentId: payload.payment?.entity.notes.rentId,
         amount: amountInRupees,
         paymentDate: new Date(),
       });

@@ -245,7 +245,7 @@ const validateWebhookSignature = (payload, signature, secret) => {
 router.post("/razorpay", async (req, res) => {
   const signature = req.headers["x-razorpay-signature"];
   const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
-
+  logger.info(webhookSecret);
   // Validate webhook signature
   try {
     const isValid = await validateWebhookSignature(
@@ -255,15 +255,16 @@ router.post("/razorpay", async (req, res) => {
     );
 
     if (!isValid) {
-      logger.warn("Invalid webhook signature", { signature });
+      logger.info("Invalid webhook signature", { signature });
       return res.status(400).json({ error: "Invalid signature" });
     }
 
     const { event, payload } = req.body;
-
+    
     // Handle events
     switch (event) {
       case "payment.captured":
+        logger.info("Payment captured");
         await handlePaymentCapturedEvent(payload);
         break;
       default:
@@ -280,6 +281,7 @@ router.post("/razorpay", async (req, res) => {
 
 async function handlePaymentCapturedEvent(payload) {
   try {
+    logger.info(payload);
     if (payload?.payment?.notes?.Receipt) {
       const receiptNumber = payload.payment.notes.Receipt;
       const amountInRupee = payload.payment.entity.amount / 100;

@@ -281,7 +281,7 @@ router.post("/razorpay", async (req, res) => {
 
 async function handlePaymentCapturedEvent(payload) {
   try {
-    logger.info(payload);
+    logger.info(JSON.stringify(payload));
     if (payload?.payment?.notes?.Receipt) {
       const receiptNumber = payload.payment.notes.Receipt;
       const amountInRupee = payload.payment.entity.amount / 100;

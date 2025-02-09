@@ -457,6 +457,114 @@ router.post('/return-deposit/:buildingID/:roomId/:contractId', async (req, res) 
 });
 
 
+
+router.post('/cancel-contract/:buildingID/:roomId/:contractId', async (req, res) => {
+  const session = await mongoose.startSession(); // Start a session for transaction
+  session.startTransaction(); // Start the transaction
+
+  try {
+    const { buildingID, roomId, contractId } = req.params;
+    const { status} = req.body;
+
+    // Validate inputs
+    if (
+      !mongoose.Types.ObjectId.isValid(buildingID) ||
+      !mongoose.Types.ObjectId.isValid(roomId) ||
+      !mongoose.Types.ObjectId.isValid(contractId)
+    ) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid building, room, contract, or account ID' 
+      });
+    }
+
+    // Validate status
+    if (!['Returned', 'ReturnPending'].includes(status)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid status. Allowed values: "Returned" or "ReturnPending"' 
+      });
+    }
+
+    // Find the building by ID
+    const building = await buildingModel.findById(buildingID).session(session);
+    if (!building) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Building not found' 
+      });
+    }
+
+    // Find the room by ID
+    const room = building.rooms.id(roomId);
+    if (!room) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Room not found' 
+      });
+    }
+
+    // Find the current active contract
+    const activeContract = room.contractHistory.find(
+      contract => contract._id.toString() === contractId
+    );
+    if (!activeContract) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'No active contract found' 
+      });
+    }
+
+    // Update contract status based on the provided status
+    if (status === 'Returned') {
+      activeContract.depositStatus = 'Returned';
+      activeContract.status = 'inactive';
+      activeContract.to = Date.now(); // Set the end date to now
+    } else {
+      activeContract.depositStatus = 'ReturnPending';
+    }
+
+    // Save the changes
+    await building.save({ session });
+
+    // Commit the transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    // Send success response
+    res.status(200).json({
+      success: true,
+      message: 'Contract canceled successfully',
+      data: {
+        contractId: activeContract._id,
+        depositStatus: activeContract.depositStatus,
+        status: activeContract.status,
+      },
+    });
+
+  } catch (error) {
+    // Rollback the transaction in case of error
+    await session.abortTransaction();
+    session.endSession();
+
+    // Log the error
+    logger.error('Error canceling contract:', error);
+
+    // Send error response
+    res.status(500).json({
+      success: false,
+      message: 'Error canceling contract',
+      error: error.message, // Include error message for debugging
+    });
+  } finally {
+    // Ensure the session is always closed
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    session.endSession();
+  }
+});
+
 router.get('/get-buildings', async (req, res) => {
 
   try {
@@ -543,6 +651,7 @@ router.get('/rent-collections/pending', async (req, res) => {
                 PaymentAmount: collection.PaymentAmount,
                 paidAmount: collection.paidAmount || 0,
                 status: collection.status,
+                onleave: collection.onleave,
                 partialPayments: collection.partialPayments,
                 dueDate: collection.date,
                 advancePayment:contract.advancePayment,

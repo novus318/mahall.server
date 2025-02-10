@@ -267,7 +267,7 @@ router.post("/razorpay", async (req, res) => {
         await handlePaymentCapturedEvent(payload);
         break;
       default:
-        logger.error("Invalid event", { event });
+        logger.error("Invalid event",JSON.stringify(req.body));
         break;
     }
 

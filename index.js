@@ -51,7 +51,7 @@ connectDB();
 // generateYearlyCollections()
 //  generateMonthlyCollections()
 //  generateMonthlySalaries()
-collectRent()
+// collectRent()
 
 // cron.schedule('0 10 1 * *', async () => {
 //   try {

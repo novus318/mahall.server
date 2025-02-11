@@ -1,14 +1,14 @@
 import { createLogger, format, transports } from 'winston';
 import nodemailer from 'nodemailer';
-import dotenv from 'dotenv'
+import dotenv from 'dotenv';
 
-dotenv.config({ path: './.env' })
+dotenv.config({ path: './.env' });
 
 const { combine, timestamp, printf } = format;
 
-// Define custom format
+// Define custom log format
 const customFormat = printf(({ level, message, timestamp }) => {
-  return `${timestamp} [${level}]: ${message}`;
+  return `${timestamp} [${level.toUpperCase()}]: ${message}`;
 });
 
 // Nodemailer transporter setup
@@ -24,19 +24,19 @@ const transporter = nodemailer.createTransport({
 });
 
 // Email notification function
-const sendErrorEmail = (errorMessage) => {
+const sendErrorEmail = (logLevel, errorMessage) => {
   const mailOptions = {
     from: 'nizamudheen.tech@gmail.com',
     to: 'nizamudheen318@gmail.com',
-    subject: 'An error from Vellap Mahal Software',
-    html: `<p><strong>Error Logged:</strong></p><p>${errorMessage}</p>`,
+    subject: `Vellap Mahal Software - ${logLevel.toUpperCase()} Alert`,
+    html: `<p><strong>${logLevel.toUpperCase()} Logged:</strong></p><p>${errorMessage}</p>`,
   };
 
   transporter.sendMail(mailOptions, (error, info) => {
     if (error) {
-      logger.error('Error sending email:', error);
+      console.error('Error sending email:', error);
     } else {
-      logger.info('Email sent:', info.response);
+      console.info('Email sent:', info.response);
     }
   });
 };
@@ -51,14 +51,15 @@ const logger = createLogger({
   transports: [
     new transports.Console(), // Logs to console
     new transports.File({ filename: 'logs/error.log', level: 'error' }), // Logs errors to file
+    new transports.File({ filename: 'logs/warn.log', level: 'warn' }), // Logs warnings to file
     new transports.File({ filename: 'logs/combined.log' }) // Logs all messages to file
   ],
 });
 
-// Listen for 'error' level logs and send an email
-logger.on('data', (log) => {
-  if (log.level === 'error') {
-    sendErrorEmail(log.message);
+// Listen for 'error' and 'warn' level logs and send an email alert
+logger.on('logged', (log) => {
+  if (log.level === 'error' || log.level === 'warn') {
+    sendErrorEmail(log.level, log.message);
   }
 });
 

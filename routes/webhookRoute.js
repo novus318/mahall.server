@@ -16,8 +16,7 @@ dotenv.config({ path: './.env' })
 
 const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL;
 const ACCESS_TOKEN = process.env.WHATSAPP_TOKEN;
-const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
-const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || "vellap2Mahal";
 
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET
@@ -241,52 +240,61 @@ const updateReceiptAndAmount = async (props) => {
   };
 
 
-const validateWebhookSignature = (payload, signature, secret) => {
-  const generatedSignature = crypto
-    .createHmac('sha256', secret)
-    .update(payload)
-    .digest('hex');
-    logger.error(generatedSignature)
-  return generatedSignature === signature;
-};
 
-router.post("/razorpay", async (req, res) => {
-  const signature = req.headers["x-razorpay-signature"];
-  // Validate webhook signature
-  try {
-    logger.error(JSON.stringify(req.body))
-    const isValid = await validateWebhookSignature(
-      JSON.stringify(req.body),
-      signature,
-      webhookSecret || 'vellap2Mahal'
-    );
-
-    if (!isValid) {
-      logger.error("Invalid webhook signature");
-      logger.error(webhookSecret);
-      return res.status(400).json({ error: "Invalid signature" });
+  const validateWebhookSignature = (payload, signature, secret) => {
+    try {
+      const generatedSignature = crypto
+        .createHmac("sha256", secret)
+        .update(payload)
+        .digest("hex");
+  
+      logger.error(`Generated Signature: ${generatedSignature}`);
+      logger.error(`Received Signature: ${signature}`);
+  
+      return generatedSignature === signature;
+    } catch (error) {
+      logger.error("Error generating webhook signature", { error: error.message });
+      return false;
     }
-
-    const { event, payload } = req.body;
-    
-    // Handle events
-    switch (event) {
-      case "payment.captured":
-        logger.info("Payment captured");
-        await handlePaymentCapturedEvent(payload);
-        break;
-      default:
-        logger.error("Invalid event");
-        break;
+  };
+  
+  router.post("/razorpay", async (req, res) => {
+    const signature = req.headers["x-razorpay-signature"];
+  
+    if (!signature) {
+      logger.error("No signature found in headers");
+      return res.status(400).json({ error: "Signature missing" });
     }
-
-    // Acknowledge webhook receipt
-    res.status(200).json({ status: "success" });
-  } catch (error) {
-    logger.error("Error processing Razorpay webhook", { error: error.message, stack: error.stack });
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
+  
+    try {
+      const payload = JSON.stringify(req.body);
+      const isValid = validateWebhookSignature(payload, signature, webhookSecret);
+  
+      if (!isValid) {
+        logger.error("Invalid webhook signature");
+        return res.status(400).json({ error: "Invalid signature" });
+      }
+  
+      const { event, payload: eventData } = req.body;
+  
+      switch (event) {
+        case "payment.captured":
+          logger.info("Payment captured event received");
+          await handlePaymentCapturedEvent(eventData);
+          break;
+        default:
+          logger.warn(`Unhandled event type: ${event}`);
+      }
+  
+      res.status(200).json({ status: "success" });
+    } catch (error) {
+      logger.error("Error processing Razorpay webhook", {
+        error: error.message,
+        stack: error.stack,
+      });
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
 
 async function handlePaymentCapturedEvent(payload) {
   try {

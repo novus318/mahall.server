@@ -247,14 +247,16 @@ router.post("/razorpay", async (req, res) => {
   const signature = req.headers["x-razorpay-signature"];
   // Validate webhook signature
   try {
+    logger.error(JSON.stringify(req.body))
     const isValid = await validateWebhookSignature(
       JSON.stringify(req.body),
       signature,
-      webhookSecret
+      webhookSecret || 'vellap2Mahal'
     );
 
     if (!isValid) {
-      logger.error("Invalid webhook signature", { signature });
+      logger.error("Invalid webhook signature");
+      logger.error(signature);
       return res.status(400).json({ error: "Invalid signature" });
     }
 
@@ -267,7 +269,7 @@ router.post("/razorpay", async (req, res) => {
         await handlePaymentCapturedEvent(payload);
         break;
       default:
-        logger.error("Invalid event",JSON.stringify(req.body));
+        logger.error("Invalid event");
         break;
     }
 

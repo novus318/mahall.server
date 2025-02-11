@@ -39,6 +39,12 @@ const updateReceiptAndAmount = async (props) => {
       const existingCollection = await kudiCollection.findOne({ receiptNumber })
         .populate('memberId houseId')
         .session(session);
+        
+      if(existingCollection.status === 'Paid'){
+        await session.abortTransaction();
+        session.endSession();
+        return true;
+      }
   
       if (!existingCollection) {
         await session.abortTransaction();
@@ -240,6 +246,7 @@ const validateWebhookSignature = (payload, signature, secret) => {
     .createHmac('sha256', secret)
     .update(payload)
     .digest('hex');
+    logger.error(generatedSignature)
   return generatedSignature === signature;
 };
 
@@ -256,7 +263,7 @@ router.post("/razorpay", async (req, res) => {
 
     if (!isValid) {
       logger.error("Invalid webhook signature");
-      logger.error(signature);
+      logger.error(webhookSecret);
       return res.status(400).json({ error: "Invalid signature" });
     }
 

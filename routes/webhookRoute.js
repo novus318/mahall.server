@@ -10,6 +10,7 @@ import BankModel from "../model/BankModel.js";
 import logger from "../utils/logger.js";
 import { sendWhatsAppPartial, sendWhatsAppYearlyReceipt } from "../functions/generateYearlyCollection.js";
 import buildingModel from "../model/buildingModel.js";
+import { validateWebhookSignature } from "razorpay/dist/utils/razorpay-utils.js";
 
 
 dotenv.config({ path: './.env' })
@@ -241,22 +242,22 @@ const updateReceiptAndAmount = async (props) => {
 
 
 
-  const validateWebhookSignature = (payload, signature, secret) => {
-    try {
-      const generatedSignature = crypto
-        .createHmac("sha256", secret)
-        .update(payload)
-        .digest("hex");
+  // const validateWebhookSignature = (payload, signature, secret) => {
+  //   try {
+  //     const generatedSignature = crypto
+  //       .createHmac("sha256", secret)
+  //       .update(payload, 'utf8')
+  //       .digest("hex");
   
-      logger.error(`Generated Signature: ${generatedSignature}`);
-      logger.error(`Received Signature: ${signature}`);
+  //     logger.error(`Generated Signature: ${generatedSignature}`);
+  //     logger.error(`Received Signature: ${signature}`);
   
-      return generatedSignature === signature;
-    } catch (error) {
-      logger.error("Error generating webhook signature", { error: error.message });
-      return false;
-    }
-  };
+  //     return generatedSignature === signature;
+  //   } catch (error) {
+  //     logger.error("Error generating webhook signature", { error: error.message });
+  //     return false;
+  //   }
+  // };
   
   router.post("/razorpay", async (req, res) => {
     const signature = req.headers["x-razorpay-signature"];

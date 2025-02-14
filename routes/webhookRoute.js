@@ -268,14 +268,6 @@ const updateReceiptAndAmount = async (props) => {
     }
   
     try {
-      const payload = JSON.stringify(req.body);
-      const isValid = validateWebhookSignature(payload, signature, webhookSecret);
-  
-      if (!isValid) {
-        logger.error("Invalid webhook signature");
-        return res.status(400).json({ error: "Invalid signature" });
-      }
-  
       const { event, payload: eventData } = req.body;
   
       switch (event) {

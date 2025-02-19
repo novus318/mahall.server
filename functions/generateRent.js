@@ -22,7 +22,7 @@ export const collectRent = async () => {
 
         if (activeContract) {
           const today = new Date();
-          const currentMonth = new Date(today.getFullYear(), today.getMonth() -1, 1); 
+          const currentMonth = new Date(today.getFullYear(), today.getMonth()+2, 1); 
           const period = `${currentMonth.toLocaleString('default', { month: 'long' })} ${currentMonth.getFullYear()}`;
 
           const existingCollection = activeContract.rentCollection.find(
@@ -73,7 +73,7 @@ const sendWhatsapp = async (rentCollection, tenant,room,building,contract) => {
             template: {
                 name: 'rent_collection',
                 language: {
-                    code: 'ml' 
+                    code: 'en' 
                 },
                 components: [
                     {
@@ -110,6 +110,56 @@ const sendWhatsapp = async (rentCollection, tenant,room,building,contract) => {
 }
 };
 
+export const sendRentConfirmPatial = async (rentCollection, tenant,room,building,contract,amount) => {
+    try {
+      const response = await axios.post(
+          WHATSAPP_API_URL,
+          {
+              messaging_product: 'whatsapp',
+              to: `${tenant.number}`,
+              type: 'template',
+              template: {
+                  name: 'rent_collection_partial',
+                  language: {
+                      code: 'en' 
+                  },
+                  components: [
+                      {
+                          type: 'body',
+                          parameters: [
+                              { type: 'text', text: `${tenant.name}` }, 
+                              { type: 'text', text: `${rentCollection.period}`},    
+                              { type: 'text', text: `${room.roomNumber}` },   
+                              { type: 'text', text: `${rentCollection.period}`},   
+                              { type: 'text', text: `${rentCollection.PaymentAmount}`},  
+                              { type: 'text', text: `${amount}`},
+                              { type: 'text', text: `${rentCollection.PaymentAmount - rentCollection.paidAmount}`},        
+                          ]
+                      },
+                      {
+                          type: 'button',
+                          sub_type: 'url',
+                          index: '0',
+                          parameters: [
+                              { type: 'text', text: `${building._id}/${room._id}/${contract._id}` }  
+                          ]
+                      }
+                  ]
+              }
+          },
+          {
+              headers: {
+                  'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                  'Content-Type': 'application/json'
+              }
+          }
+      );
+      logger.info('WhatsApp message sent successfully:', response.data);
+  } catch (error) {
+      logger.error('Error sending WhatsApp message:', error);
+  }
+  };
+
 export const sendRentConfirmWhatsapp = async (rentCollection, tenant,room,building,contract) => {
   try {
     const response = await axios.post(
@@ -130,7 +180,7 @@ export const sendRentConfirmWhatsapp = async (rentCollection, tenant,room,buildi
                             { type: 'text', text: `${tenant.name}` }, 
                             { type: 'text', text: `${rentCollection.period}`},    
                             { type: 'text', text: `${room.roomNumber}` },   
-                            { type: 'text', text: `${rentCollection.PaymentAmount}`},          
+                            { type: 'text', text: `${rentCollection.paidAmount}`},          
                         ]
                     },
                     {
@@ -156,5 +206,7 @@ export const sendRentConfirmWhatsapp = async (rentCollection, tenant,room,buildi
     logger.error('Error sending WhatsApp message:', error);
 }
 };
+
+
 
 

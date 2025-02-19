@@ -192,6 +192,9 @@ const updateReceiptAndAmount = async (props) => {
       if (isNaN(numericAmount) || numericAmount <= 0) {
         throw new Error('Invalid payment amount');
       }
+      if (rentCollection.status === 'paid') {
+        throw new Error('Rent collection has already been paid');
+      }
   
       // Update rent collection details
       rentCollection.paymentMethod = 'Online';

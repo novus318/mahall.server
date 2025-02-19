@@ -198,6 +198,7 @@ router.get('/rent-collections/byDate', async (req, res) => {
                                 buildingID: building.buildingID,
                                 buildingId: building._id,
                                 roomId: room._id,
+                                shop: contract.shop,
                                 contractId: contract._id,
                                 buildingName: building.buildingName,
                                 roomNumber: room.roomNumber,
@@ -208,9 +209,13 @@ router.get('/rent-collections/byDate', async (req, res) => {
                                 deposit: contract.deposit,
                                 period: collection.period,
                                 amount: collection.amount,
-                                dueDate: collection.date,
+                                PaymentAmount: collection.PaymentAmount,
+                                paidAmount: collection.paidAmount || 0,
                                 status: collection.status,
-                                paymentDate: collection.paymentDate
+                                onleave: collection.onleave,
+                                partialPayments: collection.partialPayments,
+                                dueDate: collection.date,
+                                advancePayment: contract.advancePayment,
                             });
                         });
                 });

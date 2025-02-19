@@ -6,7 +6,7 @@ import recieptCategoryModel from "../model/recieptCategoryModel.js";
 import recieptModel from "../model/recieptModel.js";
 import recieptNumberModel from "../model/recieptNumberModel.js";
 import { NextReceiptNumber } from "../functions/recieptNumber.js";
-import { sendRentConfirmWhatsapp } from "../functions/generateRent.js";
+import { sendRentConfirmPatial, sendRentConfirmWhatsapp } from "../functions/generateRent.js";
 import BankModel from "../model/BankModel.js";
 import logger from "../utils/logger.js";
 const router = express.Router()
@@ -102,9 +102,9 @@ router.post('/add-contract/:buildingID/:roomId', async (req, res) => {
 
     if (room.contractHistory && room.contractHistory.length > 0) {
       const lastContract = room.contractHistory[room.contractHistory.length - 1];
-      if(lastContract.depositStatus === 'Returned'){
+      if (lastContract.depositStatus === 'Returned') {
         lastContract.status = 'inactive';
-      }else{
+      } else {
         return res.status(400).json({ message: 'Cannot add a new contract while the last contract deposit is not returned' });
       }
     }
@@ -117,7 +117,7 @@ router.post('/add-contract/:buildingID/:roomId', async (req, res) => {
       shop,
       rent,
       deposit,
-      status: 'active' 
+      status: 'active'
     };
 
     room.contractHistory.push(newContract);
@@ -125,7 +125,7 @@ router.post('/add-contract/:buildingID/:roomId', async (req, res) => {
 
     res.status(200).json({
       success: true,
-      contractId:newContract._id,
+      contractId: newContract._id,
       message: 'Contract added successfully'
     });
   } catch (error) {
@@ -139,7 +139,7 @@ router.post('/add-contract/:buildingID/:roomId', async (req, res) => {
 router.put('/edit-room/:buildingID/:roomId', async (req, res) => {
   try {
     const { buildingID, roomId } = req.params;
-    const {roomNumber,buildingName } = req.body;
+    const { roomNumber, buildingName } = req.body;
 
     const building = await buildingModel.findById(buildingID);
 
@@ -153,8 +153,8 @@ router.put('/edit-room/:buildingID/:roomId', async (req, res) => {
       return res.status(404).json({ message: 'Room not found' });
     }
 
-  room.roomNumber =roomNumber
-  building.buildingName=buildingName
+    room.roomNumber = roomNumber
+    building.buildingName = buildingName
 
     await building.save();
 
@@ -171,7 +171,7 @@ router.put('/edit-room/:buildingID/:roomId', async (req, res) => {
 });
 router.put('/edit-contract/:buildingID/:roomId/:contractId', async (req, res) => {
   try {
-    const { buildingID, roomId,contractId } = req.params;
+    const { buildingID, roomId, contractId } = req.params;
     const { from, to, tenant, rent, shop } = req.body;
 
     const building = await buildingModel.findById(buildingID);
@@ -192,12 +192,12 @@ router.put('/edit-contract/:buildingID/:roomId/:contractId', async (req, res) =>
     if (!activeContract) {
       throw new Error('No active contract found');
     }
-   
-        activeContract.from = from;
-        activeContract.to = to;
-        activeContract.tenant = tenant;
-        activeContract.rent = rent;
-        activeContract.shop = shop;
+
+    activeContract.from = from;
+    activeContract.to = to;
+    activeContract.tenant = tenant;
+    activeContract.rent = rent;
+    activeContract.shop = shop;
 
     await building.save();
 
@@ -218,8 +218,8 @@ router.post('/pay-deposit/:buildingID/:roomId/:contractId', async (req, res) => 
   session.startTransaction(); // Start the transaction
 
   try {
-    const { buildingID, roomId,contractId } = req.params;
-    const { status, paymentMethod,accountId } = req.body;
+    const { buildingID, roomId, contractId } = req.params;
+    const { status, paymentMethod, accountId } = req.body;
 
     if (status === 'Paid' && !accountId) {
       return res.status(400).json({ message: 'Account ID is required for Paid status.' });
@@ -294,7 +294,7 @@ router.post('/pay-advance/:buildingID/:roomId/:contractId', async (req, res) => 
   session.startTransaction(); // Start the transaction
 
   try {
-    const { buildingID, roomId,contractId } = req.params;
+    const { buildingID, roomId, contractId } = req.params;
     const { amount, accountId } = req.body;
 
     // Input validation
@@ -371,14 +371,14 @@ router.post('/return-deposit/:buildingID/:roomId/:contractId', async (req, res) 
 
   try {
     const { buildingID, roomId, contractId } = req.params;
-    const { status, paymentMethod,accountId } = req.body;
+    const { status, paymentMethod, accountId } = req.body;
 
     // Validate inputs
-    if (!mongoose.Types.ObjectId.isValid(buildingID) || 
-        !mongoose.Types.ObjectId.isValid(roomId) || 
-        !mongoose.Types.ObjectId.isValid(contractId) ||
-        !mongoose.Types.ObjectId.isValid(accountId)
-      ) {
+    if (!mongoose.Types.ObjectId.isValid(buildingID) ||
+      !mongoose.Types.ObjectId.isValid(roomId) ||
+      !mongoose.Types.ObjectId.isValid(contractId) ||
+      !mongoose.Types.ObjectId.isValid(accountId)
+    ) {
       return res.status(400).json({ success: false, message: 'Invalid account ,building, room, or contract ID' });
     }
 
@@ -464,7 +464,7 @@ router.post('/cancel-contract/:buildingID/:roomId/:contractId', async (req, res)
 
   try {
     const { buildingID, roomId, contractId } = req.params;
-    const { status} = req.body;
+    const { status } = req.body;
 
     // Validate inputs
     if (
@@ -472,35 +472,35 @@ router.post('/cancel-contract/:buildingID/:roomId/:contractId', async (req, res)
       !mongoose.Types.ObjectId.isValid(roomId) ||
       !mongoose.Types.ObjectId.isValid(contractId)
     ) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid building, room, contract, or account ID' 
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid building, room, contract, or account ID'
       });
     }
 
     // Validate status
     if (!['Returned', 'ReturnPending'].includes(status)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid status. Allowed values: "Returned" or "ReturnPending"' 
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Allowed values: "Returned" or "ReturnPending"'
       });
     }
 
     // Find the building by ID
     const building = await buildingModel.findById(buildingID).session(session);
     if (!building) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Building not found' 
+      return res.status(404).json({
+        success: false,
+        message: 'Building not found'
       });
     }
 
     // Find the room by ID
     const room = building.rooms.id(roomId);
     if (!room) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Room not found' 
+      return res.status(404).json({
+        success: false,
+        message: 'Room not found'
       });
     }
 
@@ -509,9 +509,9 @@ router.post('/cancel-contract/:buildingID/:roomId/:contractId', async (req, res)
       contract => contract._id.toString() === contractId
     );
     if (!activeContract) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'No active contract found' 
+      return res.status(404).json({
+        success: false,
+        message: 'No active contract found'
       });
     }
 
@@ -579,7 +579,7 @@ router.get('/get-buildings', async (req, res) => {
 })
 
 router.get('/get-ByRoom/:buildingID/:roomId/:contractId', async (req, res) => {
-  const { buildingID, roomId,contractId } = req.params;
+  const { buildingID, roomId, contractId } = req.params;
   try {
     // Find the building by its ID
     const building = await buildingModel.findById(buildingID);
@@ -635,16 +635,16 @@ router.get('/rent-collections/pending', async (req, res) => {
             if (collection.status === 'Pending' || collection.status === 'Partial') {
               pendingCollections.push({
                 buildingID: building.buildingID,
-                buildingId:building._id,
+                buildingId: building._id,
                 roomId: room._id,
-                shop:contract.shop,
+                shop: contract.shop,
                 contractId: contract._id,
                 buildingName: building.buildingName,
                 roomNumber: room.roomNumber,
                 tenantName: contract.tenant.name,
                 tenantNumber: contract.tenant.number,
                 rent: contract.rent,
-                rentId:collection._id,
+                rentId: collection._id,
                 deposit: contract.deposit,
                 period: collection.period,
                 amount: collection.amount,
@@ -654,7 +654,7 @@ router.get('/rent-collections/pending', async (req, res) => {
                 onleave: collection.onleave,
                 partialPayments: collection.partialPayments,
                 dueDate: collection.date,
-                advancePayment:contract.advancePayment,
+                advancePayment: contract.advancePayment,
               });
             }
           });
@@ -671,109 +671,115 @@ router.get('/rent-collections/pending', async (req, res) => {
 })
 
 router.put('/update/rent-collection/:buildingID/:roomId/:contractId', async (req, res) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-    try {
-        const { buildingID, roomId, contractId } = req.params;
-        const {
-            rentCollectionId,
-            paymentType,
-            accountId,
-            amount,
-            PaymentAmount,
-            leaveDays,
-            leaveDeduction,
-            rejectionReason,
-            paymentDate,
-            newStatus
-        } = req.body;
+  try {
+    const { buildingID, roomId, contractId } = req.params;
+    const {
+      rentCollectionId,
+      paymentType,
+      accountId,
+      amount,
+      PaymentAmount,
+      leaveDays,
+      leaveDeduction,
+      rejectionReason,
+      paymentDate,
+      newStatus
+    } = req.body;
 
-        // Validate payment operations
-        if (newStatus !== 'Rejected') {
-            if (!accountId) return res.status(400).json({ message: 'Account ID required for payments' });
-            if (!amount || amount <= 0) return res.status(400).json({ message: 'Valid payment amount required' });
-        }
-
-        // Validate rejection
-        if (newStatus === 'Rejected' && !rejectionReason) {
-            return res.status(400).json({ message: 'Rejection reason required' });
-        }
-
-        // Retrieve related documents
-        const building = await buildingModel.findById(buildingID).session(session);
-        const room = building?.rooms.id(roomId);
-        const contract = room?.contractHistory.id(contractId);
-        const rentCollection = contract?.rentCollection.id(rentCollectionId);
-
-        if (!building || !room || !contract || !rentCollection) {
-            return res.status(404).json({ message: 'Resource not found' });
-        }
-
-        // Handle rejection
-        if (newStatus === 'Rejected') {
-            rentCollection.status = 'Rejected';
-            rentCollection.rejectionReason = rejectionReason;
-        } 
-        // Handle payments
-        else {
-            // Update payment details
-            rentCollection.paymentMethod = paymentType;
-            rentCollection.PaymentAmount = PaymentAmount;
-            rentCollection.paymentDate = paymentDate || new Date();
-            rentCollection.onleave = { days: leaveDays, deductAmount: leaveDeduction };
-            rentCollection.accountId = accountId;
-
-            // Calculate adjusted amount with deductions
-            const deductions = (rentCollection.onleave.deductAmount || 0) + (rentCollection.advanceDeduction || 0);
-            const adjustedAmount = rentCollection.amount - deductions;
-
-            // Update paid amount and status
-            rentCollection.paidAmount = Math.min(rentCollection.paidAmount + amount, adjustedAmount);
-            rentCollection.status = rentCollection.paidAmount >= adjustedAmount ? 'Paid' : 'Partial';
-
-            // Record partial payment
-            rentCollection.partialPayments.push({
-                amount: amount,
-                paymentDate: rentCollection.paymentDate,
-                description: `Payment for ${building.buildingID} - Room ${room.roomNumber}`,
-                receiptNumber: `RC-${Date.now()}`
-            });
-
-            // Process financial transaction
-            await creditAccount(
-                accountId,
-                amount,
-                `Rent from ${contract.tenant.name} for building ${building.buildingID} room ${room.roomNumber}`,
-                'Rent',
-                `/rent/room-details/${building._id}/${roomId}/${contractId}`
-            ).catch(err => {
-                throw new Error(`Payment processing failed: ${err.message}`);
-            });
-        }
-
-        await building.save({ session });
-        await session.commitTransaction();
-
-        res.status(200).json({
-            success: true,
-            message: `Rent ${newStatus === 'Rejected' ? 'rejected' : 'updated'} successfully`,
-            data: rentCollection
-        });
-
-    } catch (error) {
-      console.log(error);
-        await session.abortTransaction();
-        logger.error(`Rent update failed: ${error.message}`);
-        res.status(500).json({ 
-            success: false, 
-            message: error.message.startsWith('Payment processing') 
-                ? 'Payment failed - changes rolled back' 
-                : 'Operation failed'
-        });
-    } finally {
-        session.endSession();
+    // Validate payment operations
+    if (newStatus !== 'Rejected') {
+      if (!accountId) return res.status(400).json({ message: 'Account ID required for payments' });
+      if (!amount || amount <= 0) return res.status(400).json({ message: 'Valid payment amount required' });
     }
+
+    // Validate rejection
+    if (newStatus === 'Rejected' && !rejectionReason) {
+      return res.status(400).json({ message: 'Rejection reason required' });
+    }
+
+    // Retrieve related documents
+    const building = await buildingModel.findById(buildingID).session(session);
+    const room = building?.rooms.id(roomId);
+    const contract = room?.contractHistory.id(contractId);
+    const rentCollection = contract?.rentCollection.id(rentCollectionId);
+
+    if (!building || !room || !contract || !rentCollection) {
+      return res.status(404).json({ message: 'Resource not found' });
+    }
+
+    // Handle rejection
+    if (newStatus === 'Rejected') {
+      rentCollection.status = 'Rejected';
+      rentCollection.rejectionReason = rejectionReason;
+    }
+    // Handle payments
+    else {
+      // Update payment details
+      rentCollection.paymentMethod = paymentType;
+      rentCollection.PaymentAmount = PaymentAmount;
+      rentCollection.paymentDate = paymentDate || new Date();
+      rentCollection.onleave = { days: leaveDays, deductAmount: leaveDeduction };
+      rentCollection.accountId = accountId;
+
+      // Calculate adjusted amount with deductions
+      const deductions = (rentCollection.onleave.deductAmount || 0) + (rentCollection.advanceDeduction || 0);
+      const adjustedAmount = rentCollection.amount - deductions;
+
+      // Update paid amount and status
+      rentCollection.paidAmount = Math.min(rentCollection.paidAmount + amount, adjustedAmount);
+      rentCollection.status = rentCollection.paidAmount >= adjustedAmount ? 'Paid' : 'Partial';
+
+      // Record partial payment
+      rentCollection.partialPayments.push({
+        amount: amount,
+        paymentDate: rentCollection.paymentDate,
+        description: `Payment for ${building.buildingID} - Room ${room.roomNumber}`,
+        receiptNumber: `RC-${Date.now()}`
+      });
+
+      // Process financial transaction
+      await creditAccount(
+        accountId,
+        amount,
+        `Rent from ${contract.tenant.name} for building ${building.buildingID} room ${room.roomNumber}`,
+        'Rent',
+        `/rent/room-details/${building._id}/${roomId}/${contractId}`
+      ).catch(err => {
+        throw new Error(`Payment processing failed: ${err.message}`);
+      });
+    }
+
+    await building.save({ session });
+    await session.commitTransaction();
+
+    if (rentCollection.status === 'Paid') {
+      await sendRentConfirmWhatsapp(rentCollection, contract.tenant, room, building, contract)
+    } else {
+      await sendRentConfirmPatial(rentCollection, contract.tenant, room, building, contract, amount)
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Rent ${newStatus === 'Rejected' ? 'rejected' : 'updated'} successfully`,
+      data: rentCollection
+    });
+
+  } catch (error) {
+    console.log(error);
+    await session.abortTransaction();
+    logger.error(`Rent update failed: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      message: error.message.startsWith('Payment processing')
+        ? 'Payment failed - changes rolled back'
+        : 'Operation failed'
+    });
+  } finally {
+    session.endSession();
+  }
 });
 
 
@@ -783,7 +789,7 @@ router.put('/update-partial/rent-collection/:buildingID/:roomId/:contractId', as
 
   try {
     const { buildingID, roomId, contractId } = req.params;
-    const { rentCollectionId, paymentType, accountId, amount,paymentDate } = req.body;
+    const { rentCollectionId, paymentType, accountId, amount, paymentDate } = req.body;
 
     // Validate input parameters
     if (!buildingID || !roomId || !contractId || !rentCollectionId || !paymentType || !accountId || !amount) {
@@ -841,6 +847,12 @@ router.put('/update-partial/rent-collection/:buildingID/:roomId/:contractId', as
     await building.save({ session });
     await session.commitTransaction();
 
+    if (rentCollection.status === 'Paid') {
+      await sendRentConfirmWhatsapp(rentCollection, contract.tenant, room, building, contract)
+    } else {
+      await sendRentConfirmPatial(rentCollection, contract.tenant, room, building, contract, amount)
+    }
+
     res.status(200).json({
       success: true,
       message: 'Rent updated successfully',
@@ -854,8 +866,8 @@ router.put('/update-partial/rent-collection/:buildingID/:roomId/:contractId', as
 
     res.status(500).json({
       success: false,
-      message: error.message.startsWith('Payment processing') 
-        ? 'Payment failed - changes rolled back' 
+      message: error.message.startsWith('Payment processing')
+        ? 'Payment failed - changes rolled back'
         : 'Operation failed'
     });
   } finally {

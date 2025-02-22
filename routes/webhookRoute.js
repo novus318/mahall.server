@@ -313,25 +313,30 @@ async function handlePaymentCapturedEvent(payload) {
 
       await updateReceiptAndAmount({ receiptNumber, amount: amountInRupee });
       logger.info("Receipt updated successfully", { receiptNumber, amountInRupee });
-    } else if (payload?.payment?.entity.notes?.Tenant) {
+    } else if(payload?.payment?.entity?.notes?.Tenant) {
       const amountInRupees = payload.payment.entity.amount / 100;
-      logger.info(`Rent payment detected ${payload.payment.notes.Tenant}`);
+      const tenantName = payload.payment.entity.notes.Tenant;
+
+      logger.info(`Rent payment detected for tenant: ${tenantName}`);
+
+      // Update rent collection
       await updateRentCollection({
-        buildingId: payload.payment?.entity.notes.buildingId,
-        roomId: payload.payment?.entity.notes.roomId,
-        contractId: payload.payment?.entity.notes.contractId,
-        rentId: payload.payment?.entity.notes.rentId,
+        buildingId: payload.payment.entity.notes.buildingId,
+        roomId: payload.payment.entity.notes.roomId,
+        contractId: payload.payment.entity.notes.contractId,
+        rentId: payload.payment.entity.notes.rentId,
         amount: amountInRupees,
         paymentDate: new Date(),
       });
 
-      logger.info(`Rent payment failed ${payload.payment.notes.Tenant}`);
+      logger.info(`Rent payment successfully processed for tenant: ${tenantName}`);
     }
   } catch (error) {
-    logger.error(`Error processing payment.captured event ${JSON.stringify(error)}`);
+    logger.error(`Error processing payment.captured event ${error}`);
     throw error;
   }
 }
+
 
 
 // router.get('/test',async (req, res) => {

@@ -306,6 +306,7 @@ router.post("/razorpay", async (req, res) => {
 
 async function handlePaymentCapturedEvent(payload) {
   try {
+    logger.info(`Payment captured event payload:${JSON.stringify(payload)}`);
     if (payload?.payment?.entity?.notes?.Receipt) {
       const receiptNumber = payload.payment?.entity.notes.Receipt;
       const amountInRupee = payload.payment?.entity.amount / 100;
@@ -327,7 +328,7 @@ async function handlePaymentCapturedEvent(payload) {
       logger.info(`Rent payment failed ${payload.payment.notes.Tenant}`);
     }
   } catch (error) {
-    logger.error(`Error processing payment.captured event ${error.message, payload}`);
+    logger.error(`Error processing payment.captured event ${JSON.stringify(error)}`);
     throw error;
   }
 }

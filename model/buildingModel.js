@@ -49,13 +49,11 @@ const rentCollectionSchema = new mongoose.Schema({
   
   const depositTransactionSchema = new mongoose.Schema({
     amount: { 
-        type: Number, 
-        required: true 
+        type: Number,
     },
     transactionType: { 
         type: String, 
         enum: ['Paid', 'Returned'], 
-        required: true 
     },
     paymentMethod: {
         type: String,
@@ -83,7 +81,7 @@ const tenantSchema = new mongoose.Schema({
     tenant: { type: tenantSchema, required: true },
     shop:{type:String},
     rent: { type: Number, required: true },
-    deposit: { type: Number, required: true },
+    deposit: { type: Number},
     advancePayment:{
       type: Number,
       default: 0,

@@ -7,6 +7,7 @@ dotenv.config({ path: './.env' })
 const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL;
 const ACCESS_TOKEN = process.env.WHATSAPP_TOKEN;
 import xlsx from 'xlsx';
+import buildingModel from "../model/buildingModel.js";
 
 
 export const generateMonthlySample = async () => {
@@ -50,6 +51,48 @@ export const generateMonthlySample = async () => {
         console.log('Monthly collections created for all houses');
     } catch (error) {
         console.log('Error fetching houses or creating monthly collections:', error);
+    }
+};
+
+export const generateMonthlySample2 = async () => {
+    try {
+         const buildings = await buildingModel.find();
+
+        // Create a new workbook and a worksheet
+        const workbook = xlsx.utils.book_new();
+        const worksheetData = [];
+
+        // Add headers to the worksheet
+        worksheetData.push(['Name', 'WhatsApp Number']);
+
+        for (const building of buildings) {
+            for (const room of building.rooms) {
+              const activeContract = room.contractHistory.find((contract) => {
+                return contract.status === 'active' ;
+              });
+      
+              if (activeContract) {
+                const Tenant = activeContract.tenant;
+                if (Tenant && Tenant.name && Tenant.number) {
+                    worksheetData.push([Tenant.name, Tenant.number]);
+                }else{
+                    console.log('Tenant not found for room:', room._id);
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+              }
+            }
+          }
+
+        // Create a worksheet from the data
+        const worksheet = xlsx.utils.aoa_to_sheet(worksheetData);
+
+        // Add the worksheet to the workbook
+        xlsx.utils.book_append_sheet(workbook, worksheet, 'tenants');
+
+        // Write the workbook to a file
+        xlsx.writeFile(workbook, 'tenants.xls');
+    } catch (error) {
+        console.log(error);
     }
 };
 

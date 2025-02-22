@@ -11,9 +11,9 @@ import bankRoutes from './routes/bankRoutes.js'
 import staffRoutes from './routes/staffRoutes.js'
 import buildingRoutes from './routes/buildingRoutes.js'
 import transactionRoutes from './routes/transactionRoutes.js'
-import { generateMonthlyCollections } from "./functions/generateMonthlyCollections.js"
-import { generateMonthlySalaries } from "./functions/generateSalary.js"
-import { collectRent } from "./functions/generateRent.js"
+// import { generateMonthlyCollections } from "./functions/generateMonthlyCollections.js"
+// import { generateMonthlySalaries } from "./functions/generateSalary.js"
+// import { collectRent } from "./functions/generateRent.js"
 import dashboardRoutes from './routes/dashboardRoutes.js'
 import paymentRoutes from './routes/paymentRoutes.js'
 import recieptRoutes from './routes/recieptRoutes.js'
@@ -25,7 +25,8 @@ import razorpayRoute from './routes/razorpayRoute.js'
 import webhookRoute from './routes/webhookRoute.js'
 import logger from "./utils/logger.js"
 // import { generateMonthlySample } from "./functions/send-sample.js"
-import { generateYearlyCollectionForSingleHouse, generateYearlyCollections } from "./functions/generateYearlyCollection.js"
+// import { generateYearlyCollectionForSingleHouse, generateYearlyCollections } from "./functions/generateYearlyCollection.js"
+// import { generateMonthlySample2 } from "./functions/send-sample.js"
 
 
 
@@ -46,7 +47,7 @@ app.use(morgan('dev'))
 //database configcon
 connectDB();
 
-// generateMonthlySample()
+//  generateMonthlySample2()
 // await generateYearlyCollectionForSingleHouse('2025', '100');
 // generateYearlyCollections()
 //  generateMonthlyCollections()

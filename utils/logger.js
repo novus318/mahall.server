@@ -57,7 +57,7 @@ const logger = createLogger({
 });
 
 // Listen for 'error' and 'warn' level logs and send an email alert
-logger.on('logged', (log) => {
+logger.on('data', (log) => {
   if (log.level === 'error' || log.level === 'warn') {
     sendErrorEmail(log.level, log.message);
   }

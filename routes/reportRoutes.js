@@ -210,6 +210,7 @@ router.get('/rent-collections/byDate', async (req, res) => {
                                 period: collection.period,
                                 amount: collection.amount,
                                 PaymentAmount: collection.PaymentAmount,
+                                paymentDate: collection.paymentDate,
                                 paidAmount: collection.paidAmount || 0,
                                 status: collection.status,
                                 onleave: collection.onleave,

@@ -84,6 +84,7 @@ router.get('/get/payment/byDate', async (req, res) => {
         
         // Set the end date to include the entire day
         end.setHours(23, 59, 59, 999);
+        start.setHours(0, 0, 0, 0); 
 
         const payments = await paymentModel.find({
             createdAt: { $gte: start, $lte: end }
@@ -141,6 +142,7 @@ router.get('/get/members', async (req, res) => {
         
         // Set the end date to include the entire day
         end.setHours(23, 59, 59, 999);
+        start.setHours(0, 0, 0, 0); 
 
         // Find collections where either PaymentDate or createdAt falls within the date range
         const collections = await kudiCollection.find({
@@ -247,6 +249,7 @@ router.get('/rent-collections/byDate', async (req, res) => {
       
       // Set the end date to include the entire day
       end.setHours(23, 59, 59, 999);
+      start.setHours(0, 0, 0, 0); 
       const payslips = await salaryModel.find({createdAt: { $gte: start, $lte: end }}).sort({
         createdAt: -1,
     }).populate('staffId');

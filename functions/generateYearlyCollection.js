@@ -190,6 +190,7 @@ const sendWhatsAppMessage = async (house, month) => {
                                 { type: 'text', text: house.familyHead.name },
                                 { type: 'text', text: month },
                                 { type: 'text', text: house.number },
+                                { type: 'text', text: month },
                                 { type: 'text', text: house.collectionAmount * 12 },
                             ]
                         },
@@ -246,6 +247,10 @@ export const sendWhatsAppYearlyReceipt = async (collection) => {
                                     type: 'text',
                                     text: `${collection.houseId.number}`
                                 },
+                                {
+                                    type: 'text',
+                                    text: `${collection.paidYear}`
+                                },
                                 { type: 'text', text: collection.totalAmount.toString() }
                             ]
                         },
@@ -292,6 +297,7 @@ export const sendWhatsAppPartial = async (collection, amount) => {
                             type: 'body',
                             parameters: [
                                 { type: 'text', text: collection.memberId.name },
+                                { type: 'text', text: collection.paidYear },
                                 { type: 'text', text: collection.paidYear },
                                 { type: 'text', text: collection.totalAmount.toString() },
                                 { type: 'text', text: amount.toString() },

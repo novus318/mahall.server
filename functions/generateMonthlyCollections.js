@@ -107,6 +107,7 @@ const sendWhatsAppMessage = async (house,month) => {
                                 { type: 'text', text: house.familyHead.name }, 
                                 { type: 'text', text: month },   
                                 { type: 'text', text: house.number },
+                                { type: 'text', text: month },   
                                 { type: 'text', text: house.collectionAmount },
                             ]
                         },
@@ -154,6 +155,10 @@ export const sendWhatsAppMessageFunction = async (collection) => {
                                 {
                                     type: 'text',
                                     text: `${collection.memberId.name}`
+                                },
+                                {
+                                    type: 'text',
+                                    text: `${collection.collectionMonth}`
                                 },
                                 {
                                     type: 'text',

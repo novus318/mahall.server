@@ -75,7 +75,7 @@ const kudiCollectionSchema = new mongoose.Schema({
         type: Number,
     },
     paidAmount: {
-        type: Number, // Amount paid so far for the year (only for yearly payments)
+        type: Number,
         default: 0
     },
     partialPayments: [{

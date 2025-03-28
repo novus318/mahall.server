@@ -299,7 +299,7 @@ router.post("/razorpay", async (req, res) => {
 
     res.status(200).json({ status: "success" });
   } catch (error) {
-    logger.error(`Error processing Razorpay webhook: ${error}`)
+    logger.error(`Error processing Razorpay webhook: ${JSON.stringify(error)}`)
     res.status(200).json({ error: "Internal Server Error" });
   }
 });
@@ -312,7 +312,7 @@ async function handlePaymentCapturedEvent(payload) {
       const amountInRupee = payload.payment?.entity.amount / 100;
 
       await updateReceiptAndAmount({ receiptNumber, amount: amountInRupee });
-      logger.info("Receipt updated successfully", { receiptNumber, amountInRupee });
+      logger.info(`Receipt updated successfully ${ receiptNumber, amountInRupee }`);
     } else if(payload?.payment?.entity?.notes?.Tenant) {
       const amountInRupees = payload.payment.entity.amount / 100;
       const tenantName = payload.payment.entity.notes.Tenant;
@@ -332,7 +332,7 @@ async function handlePaymentCapturedEvent(payload) {
       logger.info(`Rent payment successfully processed for tenant: ${tenantName}`);
     }
   } catch (error) {
-    logger.error(`Error processing payment.captured event ${error}`);
+    logger.error(`Error processing payment.captured event ${JSON.stringify(error)}`);
     throw error;
   }
 }

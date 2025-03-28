@@ -128,7 +128,7 @@ app.use((req, res, next) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-  logger.error("Global Error Handler:", err.stack || err);
+  logger.error(`Error handling request: ${JSON.stringify(err.stack || err)}`);
 
   res.status(err.status || 500).json({
     success: false,

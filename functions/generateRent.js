@@ -30,6 +30,7 @@ export const collectRent = async () => {
           );
 
           if (existingCollection) {
+            logger.info(`Rent collection for ${activeContract.tenant.name} for ${period} already exists. Skipping...`);
             continue;
           }
 

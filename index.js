@@ -2,7 +2,7 @@ import express from "express"
 import dotenv from 'dotenv'
 import cors from 'cors'
 import morgan from "morgan"
-// import cron from 'node-cron';
+import cron from 'node-cron';
 import connectDB from "./config/db.js"
 import authRoutes from './routes/authRoutes.js'
 import houseRoutes from './routes/houseRoute.js'

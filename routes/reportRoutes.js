@@ -48,13 +48,21 @@ router.get('/get/reciept/byDate', async (req, res) => {
         const start = new Date(startDate);
         const end = new Date(endDate);
         
+        start.setHours(0, 0, 0, 0);
         // Set the end date to include the entire day
         end.setHours(23, 59, 59, 999);
 
         // Query the database for receipts between the given dates
         const reciepts = await recieptModel.find({
             createdAt: { $gte: start, $lte: end }
-        }).sort({ createdAt: -1 }).populate('categoryId memberId otherRecipient');
+        })
+        .sort({ createdAt: -1 })
+        .populate('categoryId memberId otherRecipient')
+        .populate({
+            path: 'accountId',
+            model: 'bank', // Make sure this matches your bank account model name
+            select: 'name holderName accountNumber' // Include relevant bank account fields
+        });
 
         // If no receipts found
         if (!reciepts || reciepts.length === 0) {
@@ -88,7 +96,14 @@ router.get('/get/payment/byDate', async (req, res) => {
 
         const payments = await paymentModel.find({
             createdAt: { $gte: start, $lte: end }
-        }).sort({ createdAt: -1 }).populate('categoryId');
+        })
+        .sort({ createdAt: -1 })
+        .populate('categoryId')
+        .populate({
+            path: 'accountId',
+            model: 'bank', // Make sure this matches your bank account model name
+            select: 'name holderName' // Only include these fields
+        });
 
         // If no receipts found
         if (!payments || payments.length === 0) {
@@ -153,7 +168,7 @@ router.get('/get/members', async (req, res) => {
         }).sort({
             PaymentDate: -1,
             createdAt: -1 // Sort by createdAt if PaymentDate is not available
-        }).populate('memberId houseId');
+        }).populate('memberId houseId accountId');
 
         if (!collections || collections.length === 0) {
             return res.status(404).json({ success: false, message: 'No collections found' });
@@ -170,7 +185,6 @@ router.get('/get/members', async (req, res) => {
 });
 
 router.get('/rent-collections/byDate', async (req, res) => {
-
     const { startDate, endDate } = req.query;
     try {
         if (!startDate || !endDate) {
@@ -184,13 +198,20 @@ router.get('/rent-collections/byDate', async (req, res) => {
         // Set the end date to include the entire day
         end.setHours(23, 59, 59, 999);
         start.setHours(0, 0, 0, 0); 
-        const buildings = await buildingModel.find({
-          "rooms.contractHistory.rentCollection.date": { $gte: start, $lte: end }
-      }).lean();
 
-      const collections = [];
+        const buildings = await buildingModel.find({
+            "rooms.contractHistory.rentCollection.date": { $gte: start, $lte: end }
+        })
+        .populate({
+            path: 'rooms.contractHistory.rentCollection.accountId',
+            model: 'bank',
+            select: 'name holderName' // Only select these fields
+        })
+        .lean();
+
+        const collections = [];
   
-     buildings.forEach((building) => {
+        buildings.forEach((building) => {
             building.rooms.forEach((room) => {
                 room.contractHistory.forEach((contract) => {
                     contract.rentCollection
@@ -219,19 +240,23 @@ router.get('/rent-collections/byDate', async (req, res) => {
                                 partialPayments: collection.partialPayments,
                                 dueDate: collection.date,
                                 advancePayment: contract.advancePayment,
+                                accountDetails: collection.accountId ? {
+                                    name: collection.accountId.name,
+                                    holderName: collection.accountId.holderName
+                                } : null
                             });
                         });
                 });
             });
         });
   
-      collections.sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
-      res.status(200).json({ success: true, collections });
+        collections.sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
+        res.status(200).json({ success: true, collections });
     } catch (error) {
-    logger.error(error)
-      res.status(500).json({ success: false, message: 'Server Error', error });
+        logger.error(error);
+        res.status(500).json({ success: false, message: 'Server Error', error });
     }
-  })
+});
   
   router.get('/get/salary/byDate', async (req, res) => {
     try {

@@ -4,6 +4,15 @@ import dotenv from 'dotenv'
 import axios from "axios";
 import memberModel from "../model/memberModel.js";
 import logger from "../utils/logger.js";
+import { PassThrough } from 'stream';
+import ffmpeg from 'fluent-ffmpeg';
+import ffmpegPath from 'ffmpeg-static';
+import fs from 'fs';
+import { promisify } from 'util';
+
+ffmpeg.setFfmpegPath(ffmpegPath);
+const writeFile = promisify(fs.writeFile);
+const unlink = promisify(fs.unlink);
 
 const router=express.Router()
 dotenv.config({ path: '../.env' })
@@ -242,6 +251,85 @@ router.get('/media/:id', async (req, res) => {
     res.set('Content-Type', media.mediaType);
     return res.send(media.mediaBlob);  
 })
+
+router.get('/audio/:id', async (req, res) => {
+  try {
+    const media = await messageModel.findById(req.params.id);
+    if (!media) {
+      return res.status(404).json({ error: 'Media not found.' });
+    }
+
+    // Validate media blob
+    if (!media.mediaBlob || !Buffer.isBuffer(media.mediaBlob)) {
+      return res.status(400).json({ error: 'Invalid audio data format.' });
+    }
+
+    const isSafari = /^((?!chrome|android).)*safari/i.test(req.headers['user-agent']);
+    const shouldConvert = isSafari || media.mediaType === 'audio/ogg';
+
+    if (shouldConvert) {
+      // Temporary file paths
+      const tempDir = './tmp';
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir);
+      }
+      
+      const tempInput = `${tempDir}/input_${media._id}.ogg`;
+      const tempOutput = `${tempDir}/output_${media._id}.mp3`;
+
+      try {
+        // Write input file
+        await writeFile(tempInput, media.mediaBlob);
+
+        // Set response headers
+        res.set({
+          'Content-Type': 'audio/mpeg',
+          'Content-Disposition': `inline; filename="audio_${media._id}.mp3"`
+        });
+
+        // Convert and stream
+        await new Promise((resolve, reject) => {
+          ffmpeg(tempInput)
+            .audioCodec('libmp3lame')
+            .audioBitrate(128)
+            .format('mp3')
+            .on('start', (cmd) => console.log('FFmpeg command:', cmd))
+            .on('error', (err) => {
+              console.error('FFmpeg error:', err);
+              reject(err);
+            })
+            .on('end', () => {
+              console.log('Conversion successful');
+              resolve(true);
+            })
+            .pipe(res, { end: true });
+        });
+
+      } finally {
+        // Cleanup temp files
+        try {
+          await unlink(tempInput).catch(() => {});
+          await unlink(tempOutput).catch(() => {});
+        } catch (cleanupErr) {
+          console.error('Cleanup error:', cleanupErr);
+        }
+      }
+    } else {
+      // Serve original format
+      res.set({
+        'Content-Type': media.mediaType,
+        'Content-Disposition': `inline; filename="audio_${media._id}.${media.mediaType.split('/')[1]}`
+      });
+      res.send(media.mediaBlob);
+    }
+
+  } catch (error) {
+    console.error('Server error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Server error processing audio.' });
+    }
+  }
+});
 
 router.delete('/messages/delete', async (req, res) => {
   const { senderName, senderNumber } = req.body;

@@ -284,7 +284,9 @@ router.get('/audio/:id', async (req, res) => {
         // Set response headers
         res.set({
           'Content-Type': 'audio/mpeg',
-          'Content-Disposition': `inline; filename="audio_${media._id}.mp3"`
+          'Content-Disposition': `inline; filename="audio_${media._id}.mp3"`,
+          'Accept-Ranges': 'bytes',
+          'Cache-Control': 'public, max-age=3600'
         });
 
         // Convert and stream
@@ -315,12 +317,36 @@ router.get('/audio/:id', async (req, res) => {
         }
       }
     } else {
-      // Serve original format
+      // Serve original format with proper headers for streaming
+      const audioBuffer = media.mediaBlob;
+      const fileExtension = media.mediaType.split('/')[1] || 'mp3';
+      
       res.set({
-        'Content-Type': media.mediaType,
-        'Content-Disposition': `inline; filename="audio_${media._id}.${media.mediaType.split('/')[1]}`
+        'Content-Type': media.mediaType === 'audio/ogg' ? 'audio/mpeg' : media.mediaType,
+        'Content-Disposition': `inline; filename="audio_${media._id}.${fileExtension}"`,
+        'Content-Length': audioBuffer.length,
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'public, max-age=3600'
       });
-      res.send(media.mediaBlob);
+
+      // Handle range requests for better audio streaming
+      const range = req.headers.range;
+      if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : audioBuffer.length - 1;
+        const chunksize = (end - start) + 1;
+        const chunk = audioBuffer.slice(start, end + 1);
+        
+        res.status(206);
+        res.set({
+          'Content-Range': `bytes ${start}-${end}/${audioBuffer.length}`,
+          'Content-Length': chunksize
+        });
+        res.send(chunk);
+      } else {
+        res.send(audioBuffer);
+      }
     }
 
   } catch (error) {

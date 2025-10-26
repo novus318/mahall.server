@@ -116,7 +116,7 @@ app.use('/server/api/reports',reportRoutes)
 app.use('/server/api/admin',adminRoute)
 app.use('/server/api/razorpay',razorpayRoute)
 app.use('/server/api/webhook',webhookRoute)
-app.use('/server/:id',generateRecieptPDF)
+app.use('/server/api/pdf/:id',generateRecieptPDF)
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

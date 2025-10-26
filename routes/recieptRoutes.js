@@ -5,6 +5,7 @@ import recieptModel from "../model/recieptModel.js";
 import { creditAccount, deleteCreditTransaction, updateCreditTransaction } from "../functions/transaction.js";
 import recieptNumberModel from "../model/recieptNumberModel.js";
 import { NextReceiptNumber } from "../functions/recieptNumber.js";
+import { sendReceiptNotification } from "../functions/receiptTemplate.js";
 import logger from "../utils/logger.js";
 const router=express.Router()
 
@@ -115,6 +116,14 @@ router.post('/create-reciept', async (req, res) => {
             if (UptdateReceiptNumber) {
                 UptdateReceiptNumber.receiptReceiptNumber.lastNumber = receiptNumber;
                 await UptdateReceiptNumber.save();
+            }
+
+            // Send WhatsApp notification
+            try {
+                await sendReceiptNotification(newReciept);
+            } catch (notificationError) {
+                logger.error('Failed to send WhatsApp notification:', notificationError);
+                // Don't fail the entire request if notification fails
             }
         }
 

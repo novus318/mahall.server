@@ -12,7 +12,7 @@ import staffRoutes from './routes/staffRoutes.js'
 import buildingRoutes from './routes/buildingRoutes.js'
 import transactionRoutes from './routes/transactionRoutes.js'
 import { generateMonthlyCollections } from "./functions/generateMonthlyCollections.js"
-// import { generateMonthlySalaries } from "./functions/generateSalary.js"
+import { generateMonthlySalaries } from "./functions/generateSalary.js"
 import { collectRent } from "./functions/generateRent.js"
 import dashboardRoutes from './routes/dashboardRoutes.js'
 import paymentRoutes from './routes/paymentRoutes.js'
@@ -55,8 +55,8 @@ connectDB();
 //  generateMonthlySalaries()
 // collectRent()
 
-// Schedule generateMonthlyCollections() for the 5th of every month at 2 AM
-cron.schedule('0 2 5 * *', async () => {
+// Schedule generateMonthlyCollections() for the 3th of every month at 2 AM
+cron.schedule('0 2 3 * *', async () => {
   try {
     await generateMonthlyCollections();
     console.log('generateMonthlyCollections executed successfully');
@@ -68,20 +68,21 @@ cron.schedule('0 2 5 * *', async () => {
   timezone: "Asia/Kolkata" 
 });
 
-// cron.schedule('0 10 2 * *', async () => {
-//   try {
-//     await generateMonthlySalaries();
-//     console.log('generateMonthlySalaries executed successfully');
-//   } catch (error) {
-//     console.error('Error in generateMonthlySalaries:', error);
-//   }
-// },
-// {
-//   timezone: "Asia/Kolkata"
-// });
+cron.schedule('0 10 2 * *', async () => {
+  try {
+    await generateMonthlySalaries();
+    console.log('generateMonthlySalaries executed successfully');
+  } catch (error) {
+    console.error('Error in generateMonthlySalaries:', error);
+  }
+},
+{
+  timezone: "Asia/Kolkata"
+});
 
-// Schedule collectRent() for the 25th of every month at 2 AM
-cron.schedule('0 2 25 * *', async () => {
+// Schedule collectRent() for the 5th of every month at 2 AM
+
+cron.schedule('0 2 5 * *', async () => {
   try {
     await collectRent();
     console.log('collectRent executed successfully');

@@ -51,7 +51,7 @@ const sendReceiptTemplate = async (number, receiptData, recipientName) => {
                 type: 'template',
                 template: {
                     name: 'receipt_confirmation',
-                    language: { code: 'en' },
+                    language: { code: 'en_IN' },
                     components: [
                         {
                             type: 'body',

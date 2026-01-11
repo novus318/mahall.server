@@ -34,7 +34,6 @@ export const generateYearlyCollections = async () => {
         // Fetch only houses with paymentType 'yearly'
         const houses = await houseModel.find({
             paymentType: 'yearly', // Filter by paymentType
-            number: { $ne: 'MP009' }, // Exclude the house with number MP009
           }).populate('familyHead');
 
         for (const house of houses) {

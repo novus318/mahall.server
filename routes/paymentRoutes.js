@@ -275,7 +275,7 @@ router.get('/get-payment/:paymentId', async (req, res) => {
 router.get('/get/payments',async(req,res)=>{
     try {
         const payments = await paymentModel.find({}).sort({
-            createdAt: -1,
+            date: -1,
         }).populate('categoryId');
         res.status(200).json({ success: true, payments });
     } catch (error) {
@@ -283,6 +283,43 @@ router.get('/get/payments',async(req,res)=>{
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 })
+
+router.get('/recent-payments', async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        // Get total count for pagination metadata
+        const totalCount = await paymentModel.countDocuments({ status: { $nin: ['Rejected'] } });
+
+        // Fetch payments with pagination, sorted by date (newest first)
+        const payments = await paymentModel
+            .find({})
+            .sort({ date: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate('categoryId accountId');
+
+        res.status(200).json({
+            success: true,
+            payments,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalCount / limit),
+                totalCount,
+                limit,
+            },
+        });
+    } catch (error) {
+        logger.error(error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: error.message,
+        });
+    }
+});
 
 
 

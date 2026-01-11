@@ -516,7 +516,7 @@ router.post('/change-paymentType', async (req, res) => {
         // Check for pending collections
         const pendingCollections = await kudiCollection.find({
             houseId: houseId,
-            status: { $ne: 'Paid' },
+            status: { $nin: ['Paid', 'Rejected'] },
         });
 
         if (pendingCollections.length > 0) {

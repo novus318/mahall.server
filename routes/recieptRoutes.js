@@ -183,6 +183,43 @@ router.get('/get-reciepts', async (req, res) => {
     }
 })
 
+router.get('/recent-reciepts', async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        // Get total count for pagination metadata
+        const totalCount = await recieptModel.countDocuments({ status: { $nin: ['Rejected'] } });
+
+        // Fetch receipts with pagination, sorted by date (newest first)
+        const reciepts = await recieptModel
+            .find()
+            .sort({ date: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate('categoryId memberId accountId');
+
+        res.status(200).json({
+            success: true,
+            reciepts,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalCount / limit),
+                totalCount,
+                limit,
+            },
+        });
+    } catch (error) {
+        logger.error(error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: error.message,
+        });
+    }
+});
+
 router.put('/update-reciept/:id', async (req, res) => {
     try {
         const { id } = req.params;

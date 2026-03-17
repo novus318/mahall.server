@@ -361,7 +361,7 @@ router.get('/kudi-collections/:memberId', async (req, res) => {
         const collections = await kudiCollection
             .find({ memberId })
             .sort({ createdAt: -1 })
-            .limit(20)
+            .limit(50)
             .populate('memberId')
             .populate('houseId');
 
